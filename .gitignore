@@ -1,0 +1,30 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and local settings
+.vscode/
+.idea/
+.env
+.env.*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Private/manufacturer-sourced experiment data (opt-in explicitly)
+data/raw/
+data/private/
+experiments/runs/
+*.sqlite3
+*.db
+
+# Windows
+Thumbs.db
+Desktop.ini
