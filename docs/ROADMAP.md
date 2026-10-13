@@ -4,6 +4,12 @@ Ten dokument definiuje proponowaną kolejność działań, a nie zadania wykonan
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+Pierwszy przyrost: parser LDT odrzuca niepełne zakresy C dla `Isym=2/3/4`.
+Dodano cztery przypadki regresyjne odrzucania brakujących granic oraz trzy
+przypadki poprawnych nierównomiernych siatek, obejmujące odbicia i C=0/360°.
+Próbki są syntetyczne; pozostały audyt i walidacja na plikach producentów
+pozostają do wykonania.
+
 - [ ] Audyt parserów IES/LDT i funkcji `sample()` w kontekście obsługiwanych symetrii, jednostek, kątów oraz błędów.
 - [ ] Zestaw testów numerycznych: brak ekstrapolacji, przejścia kątowe C=0/360, rotacja, normalizacja, typowe i nietypowe siatki, referencyjny rozsył izotropowy i strumień analityczny.
 - [ ] Diagnostyka plików: poprawny/nieobsługiwany/uszkodzony/niepełne pokrycie; ostrzeżenia i eksport raportu jakości.

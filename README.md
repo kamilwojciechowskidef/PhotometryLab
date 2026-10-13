@@ -43,6 +43,7 @@ Do działania potrzebny jest **Python 3.10 lub nowszy**, połączenie z internet
 - Analiza porównawcza świadomie ogranicza się do dolnej półprzestrzeni γ=0–90°. Brakujące pomiary nie są sztucznie ekstrapolowane. Uplighty, pliki bez pokrycia tego zakresu i badania pełnej przestrzeni wymagają rozszerzenia algorytmu.
 - IES: tylko typ C (`photometric type = 1`) i `TILT=NONE`. `TILT=INCLUDE` i zewnętrzne pliki TLT nie są obecnie obsługiwane. Nie ma obsługi fotometrii typu A i B.
 - LDT: zakładana zgodność z klasyczną strukturą EULUMDAT. Różne rozszerzenia producentów i nietypowe zestawy lamp mogą wymagać osobnych testów. Przeliczenie cd/klm na cd opiera się na polach lamp/strumienia z pliku, których jakość wymaga sprawdzenia.
+- Dla LDT z symetrią `Isym=2/3/4` parser wymaga pomiarów na obu granicach odpowiednio C=0–180°, C=90–270° i C=0–90°. Niepełny zakres jest odrzucany zamiast uzupełniania światłości wartością brzegową. Siatki nierównomierne z kompletnymi granicami są akceptowane.
 - Parametry uzyskane z nagłówka nie oznaczają automatycznie strumienia oprawy. Moc oprawy i strumień powinny być porównane z kartą katalogową.
 - PCA, KMeans i Isolation Forest są metodami **uczenia nienadzorowanego**, a nie systemem niezawodnej klasyfikacji czy dowodem jakości podobieństwa. Potrzebna jest walidacja na rzeczywistych, zróżnicowanych danych.
 - Przykłady `DEMO_*` są **syntetyczne** i nie pochodzą od producentów. Nie należy ich używać jako dowodu w wynikach eksperymentów magisterskich.

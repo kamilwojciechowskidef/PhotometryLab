@@ -182,6 +182,20 @@ def _ldt(filename: str, text: str) -> Photometry:
     else:
         indices = np.flatnonzero(c <= 90 + 1e-4)
         mode = "quadrants"
+    # Folding C angles is valid only if the measured domain includes both
+    # symmetry boundaries. Otherwise np.interp would invent a constant tail.
+    bounds = {2: (0.0, 180.0), 3: (90.0, 270.0), 4: (0.0, 90.0)}
+    if sym in bounds:
+        lower, upper = bounds[sym]
+        selected = c[indices]
+        if (len(selected) < 2 or
+                not np.isclose(selected.min(), lower, rtol=0, atol=1e-4) or
+                not np.isclose(selected.max(), upper, rtol=0, atol=1e-4)):
+            raise PhotometryError(
+                f"LDT: niepełny zakres kątów C dla Isym={sym}; "
+                f"wymagane płaszczyzny C={lower:g}° i C={upper:g}°. "
+                "Nie ekstrapolujemy brakujących pomiarów."
+            )
     count = len(indices) * ng
     if count == 0 or len(nums) < fixed_count + count:
         raise PhotometryError(f"LDT: brak światłości dla kodu symetrii {sym} (potrzeba {count} wartości).")
