@@ -6,10 +6,24 @@ from photolab.demo import make_ies, make_ldt
 from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, sample, shape_matrix)
 from photolab.models import Photometry
+from photolab.quality import assess_quality
 
 
 def read_ies(kind="narrow"):
     return load_photometry(f"{kind}.ies", make_ies(kind, kind))
+
+
+def make_ldt_with_c_symmetry(isym, c_angles, gamma_angles, intensities):
+    """Minimalny LDT: kolejne wiersze intensywności są zapisane przez parser."""
+    lines = ["TEST", "1", str(isym), str(len(c_angles)), "0", str(len(gamma_angles)), "0",
+             "report", "luminaire", "number", "file", "date",
+             "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1", "0", "1",
+             "1", "LED", "1000", "4000", "80", "10"]
+    lines.extend("0" for _ in range(10))
+    lines.extend(str(value) for value in c_angles)
+    lines.extend(str(value) for value in gamma_angles)
+    lines.extend(str(value) for row in intensities for value in row)
+    return ("\n".join(lines) + "\n").encode("ascii")
 
 
 def test_read_ies_and_symmetry():
@@ -87,6 +101,30 @@ def test_isym_quadrant_and_plane90():
     assert np.allclose(arr[2], arr[3])
 
 
+def test_ldt_isym_plane90_preserves_descending_file_order():
+    # EULUMDAT Isym=3 zapisuje płaszczyzny w kolejności C=270° ... 90°.
+    data = make_ldt_with_c_symmetry(
+        3, [0, 90, 180, 270], [0, 90], [[270, 27], [180, 18], [90, 9]],
+    )
+    item = load_photometry("plane90.ldt", data)
+    assert np.array_equal(item.c_angles, [90, 180, 270])
+    assert np.array_equal(item.intensity, [[90, 9], [180, 18], [270, 27]])
+
+
+@pytest.mark.parametrize(
+    ("isym", "c_angles", "intensities"),
+    [
+        (2, [0, 90, 170, 350], [[1, 1], [2, 2], [3, 3]]),
+        (3, [0, 90, 180, 260], [[1, 1], [2, 2], [3, 3]]),
+        (4, [0, 30, 60, 80], [[1, 1], [2, 2], [3, 3], [4, 4]]),
+    ],
+)
+def test_ldt_symmetry_rejects_missing_boundary_c_plane(isym, c_angles, intensities):
+    data = make_ldt_with_c_symmetry(isym, c_angles, [0, 90], intensities)
+    with pytest.raises(PhotometryError, match="brzegowych"):
+        load_photometry("incomplete.ldt", data)
+
+
 def test_uniform_downward_hemisphere_flux():
     item = Photometry("uniform", "test", "a", "b", np.array([0.]),
                      np.array([0., 90., 180.]), np.array([[100., 100., 100.]]),
@@ -126,3 +164,25 @@ def test_no_data_in_downward_hemisphere_excluded():
                     'radial', 'cd', 1).validate()
     with pytest.raises(ValueError, match='ekstrapolujemy'):
         shape_matrix(up)
+
+
+def test_quality_report_distinguishes_comparison_and_absolute_flux_readiness():
+    relative = Photometry("relative.ldt", "test", "a", "b", np.array([0.]),
+                          np.array([0., 90., 180.]), np.array([[10., 5., 1.]]),
+                          "radial", "cd/klm", None).validate()
+    report = assess_quality(relative)
+    assert report.comparison_ready
+    assert not report.downward_flux_ready
+    assert report.status == "gotowy z ograniczeniami"
+    assert any("przeliczenia" in issue for issue in report.issues)
+
+
+def test_quality_report_marks_missing_gamma_coverage_as_not_comparable():
+    incomplete = Photometry("incomplete.ies", "test", "a", "b", np.array([0.]),
+                            np.array([10., 180.]), np.array([[10., 1.]]),
+                            "radial", "cd", 1).validate()
+    report = assess_quality(incomplete)
+    assert not report.comparison_ready
+    assert not report.downward_flux_ready
+    assert report.status == "niegotowy do porównania"
+    assert any("gamma" in issue for issue in report.issues)

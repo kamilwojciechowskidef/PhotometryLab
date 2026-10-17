@@ -2,11 +2,15 @@
 
 Ten dokument definiuje proponowaną kolejność działań, a nie zadania wykonane. Aktualny stan wyjściowy: MVP 0.1, 13 testów automatycznych przechodziło 2026-10-10 w środowisku przekazania.
 
+Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano normalizację, metryki, obrót, ranking, jednostki i ograniczenia walidacji zakresu C. Jest to opis obecnej implementacji, nie ukończenie audytu P0 ani potwierdzenie zgodności formatowej.
+
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
 - [ ] Audyt parserów IES/LDT i funkcji `sample()` w kontekście obsługiwanych symetrii, jednostek, kątów oraz błędów.
 - [ ] Zestaw testów numerycznych: brak ekstrapolacji, przejścia kątowe C=0/360, rotacja, normalizacja, typowe i nietypowe siatki, referencyjny rozsył izotropowy i strumień analityczny.
+- [x] Regresja LDT: kolejność danych `Isym=3` (C=270°→90°) oraz odmowa importu przy braku płaszczyzny brzegowej dla `Isym=2–4`.
 - [ ] Diagnostyka plików: poprawny/nieobsługiwany/uszkodzony/niepełne pokrycie; ostrzeżenia i eksport raportu jakości.
+- [x] Wstępny raport jakości modelu danych: gotowość do porównania kształtu oraz niezależnie gotowość do obliczenia strumienia dolnego, bez modyfikowania danych wejściowych.
 - [ ] Posiadanie kilku **rzeczywistych** plików różnych producentów jako odrębnej bazy testowej z potwierdzonym prawem użycia; bez dodawania ich do publicznego repozytorium automatycznie.
 
 **Warunek ukończenia:** poprawność kluczowych obliczeń potwierdzona testami i co najmniej kilkoma ręcznie zweryfikowanymi plikami referencyjnymi; wszelkie braki dokumentowane.

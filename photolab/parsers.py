@@ -185,6 +185,20 @@ def _ldt(filename: str, text: str) -> Photometry:
     count = len(indices) * ng
     if count == 0 or len(nums) < fixed_count + count:
         raise PhotometryError(f"LDT: brak światłości dla kodu symetrii {sym} (potrzeba {count} wartości).")
+    required_c_ranges = {
+        "plane0": (0.0, 180.0),
+        "plane90": (90.0, 270.0),
+        "quadrants": (0.0, 90.0),
+    }
+    if mode in required_c_ranges:
+        start, end = required_c_ranges[mode]
+        available = c[indices]
+        if (not np.isclose(available.min(), start, atol=1e-3) or
+                not np.isclose(available.max(), end, atol=1e-3)):
+            raise PhotometryError(
+                f"LDT: Isym={sym} wymaga danych C od {start:g}° do {end:g}°; "
+                "nie interpolujemy brakujących płaszczyzn brzegowych."
+            )
     matrix = np.array(nums[fixed_count:fixed_count+count], dtype=float).reshape(len(indices), ng)
     selected_c = c[indices]
     order = np.argsort(selected_c)

@@ -12,6 +12,7 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                shape_matrix)
 from photolab.demo import samples
 from photolab.parsers import PhotometryError, load_photometry
+from photolab.quality import assess_quality
 
 st.set_page_config(page_title="PhotometryLab | Analiza rozsyłów", page_icon="💡", layout="wide")
 
@@ -60,12 +61,14 @@ if not parsed:
 
 eligible = []
 excluded = []
+quality_reports = {}
 for item in parsed:
-    try:
-        shape_matrix(item)
+    report = assess_quality(item)
+    quality_reports[item.filename] = report
+    if report.comparison_ready:
         eligible.append(item)
-    except ValueError as error:
-        excluded.append((item.filename, str(error)))
+    else:
+        excluded.append((item.filename, " | ".join(report.issues)))
 
 m1, m2, m3 = st.columns(3)
 m1.metric("Pliki odczytane", len(parsed))
@@ -141,15 +144,17 @@ with t2:
             "Strumień nagłówkowy [lm]": round(item.source_flux_lm, 1) if item.source_flux_lm is not None else "brak",
             "Strumień dolny obliczony [lm]": round(down, 1) if down is not None else "brak",
             "Pokrywa γ 0–90°": "tak" if item.covers_downward else "nie",
+            "Status jakości": quality_reports[item.filename].status,
         })
     st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
     st.caption("Strumień dolny jest przybliżeniem numerycznym z rozsyłu w cd, a wartość z nagłówka może mieć inne znaczenie. "
                "Nie są to wyniki pomiaru ani deklarowana przez producenta skuteczność oprawy.")
     with st.expander("Ostrzeżenia i ograniczenia plików"):
         for item in parsed:
-            if item.warnings:
+            issues = quality_reports[item.filename].issues
+            if issues:
                 st.write(f"**{item.filename}**")
-                for note in item.warnings:
+                for note in issues:
                     st.caption("• " + note)
             else:
                 st.caption(f"{item.filename}: brak dodatkowych ostrzeżeń parsera.")

@@ -113,8 +113,7 @@ def estimated_downward_lumens(item: Photometry) -> float | None:
     theta = np.deg2rad(gs)
     az = np.deg2rad(cs)
     integrand = intensity_cd * np.sin(theta)[None, :]
-    integrate = getattr(np, "trapezoid", np.trapz)
-    return float(integrate(integrate(integrand, theta, axis=1), az, axis=0))
+    return float(np.trapezoid(np.trapezoid(integrand, theta, axis=1), az, axis=0))
 
 
 def embedding(items: Sequence[Photometry], clusters: int = 3) -> tuple[np.ndarray, np.ndarray, np.ndarray | None, np.ndarray]:

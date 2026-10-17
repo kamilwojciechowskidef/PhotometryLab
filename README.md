@@ -1,12 +1,21 @@
-# PhotometryLab — wersja MVP 0.1
+﻿# PhotometryLab — MVP version 0.1
 
-Prototyp aplikacji do pracy magisterskiej: **„Analiza porównawcza plików fotometrycznych różnych producentów z wykorzystaniem sztucznej inteligencji i implementacją autorskiego narzędzia informatycznego”**.
+A prototype application developed for a master's thesis: **“Comparative analysis of photometric files from different manufacturers using artificial intelligence and the implementation of an original software tool.”**
 
-Aplikacja ma polski interfejs i uruchamia się **lokalnie**. Nie wymaga konta ani zewnętrznego API. Wczytuje pliki IES (.ies) i EULUMDAT (.ldt), ujednolica rozsyły, pokazuje ranking podobieństw i wizualizacje. Ma również eksperymentalny moduł PCA, KMeans i Isolation Forest.
+The application has a Polish interface and runs **locally**. It requires no account or external API. It imports IES (.ies) and EULUMDAT (.ldt) files, aligns luminous intensity distributions, displays similarity rankings and visualizations, and includes an experimental PCA, KMeans, and Isolation Forest module.
 
-## Szybki start w Windows (PowerShell)
+**Similarity in distribution shape does not establish luminaire equivalence.** PhotometryLab is a research prototype. It is not certified lighting design software or an automated replacement selection system.
 
-Najprościej: rozpakuj ZIP i dwukrotnie kliknij `START_WINDOWS.bat` (wymagany zainstalowany Python 3.10+). Możesz też uruchomić ręcznie w folderze projektu:
+## Project documentation
+
+- [Project brief and requirements](docs/PROJECT_BRIEF.md) — thesis scope and research principles.
+- [Development roadmap](docs/ROADMAP.md) — stages P0–P4 and completion criteria; auditing the photometric layer is the priority.
+- [Agent instructions](AGENTS.md) — rules for working on code and documentation.
+- [Initial task template](CODEX_START.md) — guidance for handing the project over to an agent.
+
+## Quick start on Windows (PowerShell)
+
+The easiest option is to extract the ZIP archive and double-click `START_WINDOWS.bat` (Python 3.10+ must be installed). Alternatively, run these commands from the project directory:
 
 ```powershell
 py -3 -m venv .venv
@@ -14,7 +23,7 @@ py -3 -m venv .venv
 .venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-Otwórz adres podany w terminalu, zwykle `http://localhost:8501`.
+Open the address shown in the terminal, usually `http://localhost:8501`.
 
 Linux/macOS:
 
@@ -24,58 +33,92 @@ python3 -m venv .venv
 .venv/bin/python -m streamlit run app.py
 ```
 
-Do działania potrzebny jest **Python 3.10 lub nowszy**, połączenie z internetem jedynie podczas pierwszej instalacji bibliotek.
+The application requires **Python 3.10 or later** and the libraries listed in `requirements.txt`. Installing or updating dependencies may require internet access. File analysis runs locally and requires no external API. `START_WINDOWS.bat` invokes the dependency installer on every launch; with an existing environment, you can run the Streamlit command above directly.
 
-## Co już działa?
+If `py -3` fails to launch the interpreter, check your Python installation and the `py` launcher. If `python` works, you can use `python -m venv .venv`. The remaining commands use the interpreter in `.venv` directly, so activating the environment is unnecessary.
 
-1. Import wielu plików, z zachowaniem informacji o błędach zamiast bezgłośnego pomijania plików.
-2. Odczyt IES LM-63 typu C (z `TILT=NONE`), LDT EULUMDAT (symetrie `Isym` od 0 do 4).
-3. Rozszerzanie symetrii rozsyłu, interpolacja do wspólnej siatki: C od 0° do 350° co 10°, γ od 0° do 90° co 5°.
-4. Porównanie **kształtu rozsyłu** z normalizacją do maksimum danej oprawy: ważone przez `sin(γ)` podobieństwo cosinusowe i ważony RMSE. Opcjonalny obrót C co 10°.
-5. Ranking opraw, wykresy krzywych C0/C90, mapa rozsyłu, eksport rankingu do CSV.
-6. Analiza eksploracyjna PCA (2D), klasteryzacja KMeans i opcjonalne oznaczanie obserwacji nietypowych algorytmem Isolation Forest (od 8 plików).
-7. Prosty obliczany numerycznie strumień dolny, jeśli da się wiarygodnie przeliczyć intensywności na cd; osobny od metadanych strumienia.
-8. Syntetyczne próbki w tym przykład LDT, do weryfikacji działania i nauki interfejsu.
+## Current features
 
-## Kluczowe ograniczenia wersji 0.1
+1. Import multiple files and report errors rather than silently skipping files.
+2. Read IES LM-63 Type C files (`TILT=NONE`) and EULUMDAT LDT files (`Isym` symmetry codes 0–4).
+3. Expand distribution symmetry and interpolate onto a common grid: C from 0° to 350° in 10° steps, γ from 0° to 90° in 5° steps.
+4. Compare **distribution shape**, normalized to the maximum on the comparison grid, using cosine similarity and RMSE weighted by `sin(γ)`. Optional C rotation in 10° steps.
+5. Luminaire rankings, C0/C90 curve plots, distribution heatmaps, and ranking export to CSV.
+6. Exploratory PCA (2D), KMeans clustering, and optional anomaly flags using Isolation Forest (with at least 8 files).
+7. Numerical estimates of downward luminous flux when intensities can be reliably converted to cd, kept separate from flux metadata.
+8. Synthetic samples, including an LDT example, for checking application behavior and learning the interface.
+9. A programmatic quality report (`assess_quality`) that explicitly separates readiness for shape comparison from readiness for an absolute downward-flux estimate.
 
-- **Nie jest to automatyczny dobór pełnoprawnych zamienników.** Kształt rozsyłu może być podobny mimo innego strumienia, mocy, geometrii, barwy czy sposobu montażu. Ostateczne zastępowanie opraw wymaga projektu oświetleniowego i weryfikacji w warunkach konkretnej instalacji.
-- Analiza porównawcza świadomie ogranicza się do dolnej półprzestrzeni γ=0–90°. Brakujące pomiary nie są sztucznie ekstrapolowane. Uplighty, pliki bez pokrycia tego zakresu i badania pełnej przestrzeni wymagają rozszerzenia algorytmu.
-- IES: tylko typ C (`photometric type = 1`) i `TILT=NONE`. `TILT=INCLUDE` i zewnętrzne pliki TLT nie są obecnie obsługiwane. Nie ma obsługi fotometrii typu A i B.
-- LDT: zakładana zgodność z klasyczną strukturą EULUMDAT. Różne rozszerzenia producentów i nietypowe zestawy lamp mogą wymagać osobnych testów. Przeliczenie cd/klm na cd opiera się na polach lamp/strumienia z pliku, których jakość wymaga sprawdzenia.
-- Parametry uzyskane z nagłówka nie oznaczają automatycznie strumienia oprawy. Moc oprawy i strumień powinny być porównane z kartą katalogową.
-- PCA, KMeans i Isolation Forest są metodami **uczenia nienadzorowanego**, a nie systemem niezawodnej klasyfikacji czy dowodem jakości podobieństwa. Potrzebna jest walidacja na rzeczywistych, zróżnicowanych danych.
-- Przykłady `DEMO_*` są **syntetyczne** i nie pochodzą od producentów. Nie należy ich używać jako dowodu w wynikach eksperymentów magisterskich.
-- Wczytywane pliki mają limit 5 MB; kod prototypu nie zawiera bazy danych, kont użytkowników, integracji CAD/DIALux ani deduplikacji po zawartości.
+## How the ranking works
 
-## Proponowane eksperymenty do magisterki
+Comparison covers only the lower hemisphere: C = 0–350° in 10° steps (36 planes), γ = 0–90° in 5° steps (19 angles). Luminous intensities are interpolated linearly using the symmetry stored in the data model. Each matrix is then divided by its own maximum **after interpolation onto this grid**. Normalization removes intensity scale differences; it does not compare luminaire flux or power.
 
-Wymagana baza badawcza: prawdziwe pliki kilku producentów, z uwzględnieniem licencji/warunków używania plików. Dla każdej oprawy odnotuj grupę funkcjonalną, symetrię, strumień, moc, producenta, typ i przeznaczenie. Ręcznie oceń próby zamiany jako punkt odniesienia.
+For normalized values `x_i`, `y_i` and weights `w_i = sin(γ_i) / Σ sin(γ_i)`, summed over all grid points:
 
-Porównaj skuteczność: cosinus, RMSE, odległość euklidesowa oraz metody ML na różnych zestawach cech. Mierz Precision@k/Recall@k, czas obliczeń, wpływ rozdzielczości siatki, trybu obrotu, symetrii i anomalii danych. Dokumentuj także błędne zamienniki.
+- Cosine similarity: `Σ(w_i x_i y_i) / sqrt(Σ(w_i x_i²) Σ(w_i y_i²))`; higher values indicate greater similarity, and 1 indicates matching vector directions.
+- RMSE: `sqrt(Σ(w_i (x_i − y_i)²))`; lower values indicate smaller differences, and 0 indicates identical matrices.
 
-## Architektura
+These metrics are dimensionless and do not represent a percentage of luminaire equivalence. Weights at γ = 0° are zero. Discrete `sin(γ)` weights approximate solid-angle contributions; they do not exactly integrate individual grid cells.
+
+With rotation alignment enabled, the candidate matrix is shifted along the C axis by 0–350° in 10° steps. The rotation with the lowest RMSE is selected, followed by the higher cosine similarity (using a numerical tolerance of `1e-12`). Ties retain the first rotation found. The reported angle describes the shift applied to the candidate data. Candidates are ranked by ascending RMSE, descending cosine similarity, and then filename.
+
+## Units and luminous flux
+
+- **IES:** the matrix is in `cd` after applying the `candela multiplier`. Header flux, when available, is stored as source luminous flux rather than verified luminaire luminous flux.
+- **LDT:** the matrix is in `cd/klm`; conversion to `cd` uses the lamp count, lamp flux, and conversion factor fields. For multiple lamp sets, the code sums their reference fluxes and issues a warning. This interpretation requires verification against reference files. Shape comparison remains possible when the conversion scale is unavailable.
+- **Estimated downward luminous flux:** a numerical approximation of the integral `I(C, γ) sin(γ) dγ dC` for γ = 0–90°, with angles in radians. The code uses trapezoidal integration on a grid with C steps of 5° and γ steps of 2.5°. The result in lumens is available when the gamma range is covered and conversion to `cd` is known. It is neither a manufacturer declaration nor the total luminaire luminous flux.
+
+## Key limitations of version 0.1
+
+- **The application does not automatically select equivalent replacements.** Similar distributions may have different flux, power, geometry, color characteristics, or mounting requirements. Replacing luminaires requires lighting design calculations and verification for the specific installation.
+- Comparison is limited to the lower hemisphere, γ = 0–90°. The code rejects sampling outside the measured gamma range and distributions with no emission on the comparison grid. For LDT `Isym=2`, `Isym=3`, and `Isym=4`, it also requires the symmetry-defining boundary C planes (respectively 0–180°, 90–270°, and 0–90°); it does not infer missing boundary values by interpolation. This is not complete validation of every possible C grid or manufacturer extension.
+- IES: only Type C (`photometric type = 1`) and `TILT=NONE`. `TILT=INCLUDE`, external TLT files, and Type A or B photometry are unsupported.
+- LDT: the parser assumes the classical EULUMDAT structure. Manufacturer extensions and unusual lamp sets may require separate tests. Conversion from cd/klm to cd relies on lamp and flux fields whose quality must be verified.
+- Header parameters do not automatically establish luminaire luminous flux. Power and flux should be checked against the product datasheet.
+- PCA, KMeans, and Isolation Forest are **unsupervised learning** methods. They do not provide reliable classification guarantees or demonstrate the quality of similarity results. Validation on diverse real data is required.
+- `DEMO_*` examples are **synthetic** and do not come from manufacturers. They must not serve as empirical evidence for thesis experiments.
+- Imported files have a 5 MB limit. The prototype has no database, user accounts, CAD/DIALux integration, or content-based deduplication.
+- Results are identified by filenames. The interface assigns distinct names when collisions occur, but the analysis layer has no persistent identifiers: `find_similar()` excludes candidates whose filename matches the reference filename.
+- Support for symmetry codes in the parser does not prove full format compliance. Independent tests and real reference files are required.
+
+## Proposed thesis experiments
+
+The research dataset should contain real files from several manufacturers, with documented licenses or terms of use. Record each luminaire's functional category, symmetry, flux, power, manufacturer, type, and intended use. Manually assess proposed replacements as a reference.
+
+Compare cosine similarity, RMSE, and justified ML methods on the same dataset using a protocol defined in advance. Euclidean distance is a proposed additional experimental metric, not a separate option in the current interface. Calculate Precision@k/Recall@k only when labels or expert judgments of relevant similarity are available. Measure computation time and the effects of grid resolution, rotation, symmetry, and data anomalies; document incorrect similarity results. Evaluating potential replacements requires separate criteria and labels.
+
+Record data provenance and usage rights, code and library versions, and grid, normalization, and rotation settings. The current ML module uses `random_state=42`: PCA has 2 components, KMeans uses `n_init=10`, and Isolation Forest uses `n_estimators=100` and `contamination=0.15`. These settings describe the implementation, not validated research performance.
+
+## Architecture
 
 ```text
 app.py                 Streamlit UI
-photolab/models.py     Model danych fotometrycznych i walidacja
-photolab/parsers.py    Odczyt IES/LDT
-photolab/analysis.py   Interpolacja, podobieństwo, strumień i ML
-photolab/demo.py       Generowanie syntetycznych danych demonstracyjnych
-tests/                 Automatyczne testy parserów i metryk
-examples/              Eksportowane przykłady IES/LDT
+photolab/models.py     Photometric data model and validation
+photolab/parsers.py    IES/LDT parsing
+photolab/analysis.py   Interpolation, similarity, luminous flux, and ML
+photolab/demo.py       Synthetic demonstration data generation
+tests/                 Automated parser and metric tests
+examples/              Exported IES/LDT examples
 ```
 
-## Testy
+## Tests
 
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-## Materiały techniczne, na których oparto implementację
+Linux/macOS:
 
-- IES LM-63, dokumentacja formatu i reguł symetrii: https://web.mit.edu/4.455/software/lightscape/Docs/Lightscape%20User%20Guide.pdf
-- EULUMDAT, charakterystyka pól i układu danych: https://docs.agi32.com/PhotometricToolbox/Content/Open_Tool/eulumdat_file_format.htm
-- EULUMDAT, opis redukcji symetrii, kodowania i przykładów: https://github.com/123VincentB/eulumdat-py/blob/main/docs/eulumdat_format.md
+```bash
+.venv/bin/python -m pytest -q
+```
 
-Dokumentacja techniczna pomaga w implementacji formatu, ale nie zastępuje zakupu/uzyskania dostępu do pełnych norm, jeżeli wymaga tego ostateczna weryfikacja zgodności ze standardem.
+Tests cover synthetic parser and calculation cases and a mocked Streamlit interface test. The interface test does not replace checking the application in a browser. Passing the test suite does not establish support for every IES/LDT variant or effectiveness on manufacturer data.
+
+## Technical references used for the implementation
+
+- [IES LM-63 format documentation and symmetry rules](https://web.mit.edu/4.455/software/lightscape/Docs/Lightscape%20User%20Guide.pdf).
+- [EULUMDAT fields and data layout](https://docs.agi32.com/PhotometricToolbox/Content/Open_Tool/eulumdat_file_format.htm).
+- [EULUMDAT symmetry reduction, encoding, and examples](https://github.com/123VincentB/eulumdat-py/blob/main/docs/eulumdat_format.md).
+
+Technical documentation supports format implementation but does not replace obtaining access to the full standards when required for final compliance verification.
