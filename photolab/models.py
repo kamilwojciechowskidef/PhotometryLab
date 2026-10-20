@@ -30,28 +30,28 @@ class Photometry:
         self.gamma_angles = np.asarray(self.gamma_angles, dtype=float)
         self.intensity = np.asarray(self.intensity, dtype=float)
         if self.c_angles.ndim != 1 or self.gamma_angles.ndim != 1:
-            raise ValueError("Tablice kątów muszą być jednowymiarowe.")
+            raise ValueError("Angle arrays must be one-dimensional.")
         if self.intensity.shape != (len(self.c_angles), len(self.gamma_angles)):
-            raise ValueError("Nieprawidłowa liczba wartości światłości względem siatki kątowej.")
+            raise ValueError("The intensity matrix shape does not match the angle grid.")
         if not len(self.c_angles) or len(self.gamma_angles) < 2:
-            raise ValueError("Za mało punktów kątowych.")
+            raise ValueError("Too few angular points.")
         for array in (self.c_angles, self.gamma_angles, self.intensity):
             if not np.isfinite(array).all():
-                raise ValueError("Plik zawiera NaN lub nieskończoność.")
+                raise ValueError("The file contains NaN or infinity.")
         if np.any(self.intensity < 0):
-            raise ValueError("Plik zawiera ujemne światłości.")
+            raise ValueError("The file contains negative intensities.")
         if np.max(self.intensity) <= 0:
-            raise ValueError("Wszystkie wartości światłości są zerowe.")
+            raise ValueError("All intensity values are zero.")
         if np.any(np.diff(self.gamma_angles) <= 0):
-            raise ValueError("Kąty gamma nie są ściśle rosnące.")
+            raise ValueError("Gamma angles are not strictly increasing.")
         if self.gamma_angles[0] < -1e-5 or self.gamma_angles[-1] > 180 + 1e-5:
-            raise ValueError("Gamma poza zakresem 0–180° (typ C).")
+            raise ValueError("Gamma angles are outside the 0–180° range (Type C).")
         if np.any(self.c_angles < -1e-5) or np.any(self.c_angles > 360 + 1e-5):
-            raise ValueError("Kąty C poza zakresem 0–360°.")
+            raise ValueError("C angles are outside the 0–360° range.")
         if np.any(np.diff(self.c_angles) <= 0):
-            raise ValueError("Kąty C nie są ściśle rosnące.")
+            raise ValueError("C angles are not strictly increasing.")
         if self.symmetry not in {"none", "radial", "quadrants", "plane0", "plane90"}:
-            raise ValueError("Nieznana symetria.")
+            raise ValueError("Unknown symmetry.")
         if self.to_cd is not None and (not np.isfinite(self.to_cd) or self.to_cd <= 0):
-            raise ValueError("Nieprawidłowy współczynnik przeliczenia na cd.")
+            raise ValueError("Invalid conversion factor to cd.")
         return self

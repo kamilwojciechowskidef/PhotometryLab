@@ -23,9 +23,9 @@ def sample(item: Photometry, c_angles: np.ndarray, gamma_angles: np.ndarray,
     gamma_angles = np.asarray(gamma_angles, dtype=float).reshape(-1)
     if (gamma_angles.min() < item.gamma_angles[0] - 1e-6 or
             gamma_angles.max() > item.gamma_angles[-1] + 1e-6):
-        raise ValueError("Dane nie pokrywają wymaganego zakresu gamma. Nie ekstrapolujemy pomiarów.")
+        raise ValueError("The data do not cover the required gamma range. Measurements are not extrapolated.")
     if absolute and item.to_cd is None:
-        raise ValueError("Brak danych do wiarygodnego przeliczenia na cd.")
+        raise ValueError("No data are available for a reliable conversion to cd.")
     # Interpolation along gamma at native C planes.
     interpolated = np.stack([np.interp(gamma_angles, item.gamma_angles, row)
                              for row in item.intensity])
@@ -43,7 +43,7 @@ def sample(item: Photometry, c_angles: np.ndarray, gamma_angles: np.ndarray,
         elif item.symmetry == "none":
             folded = azimuth
         else:
-            raise ValueError(f"Nieznana symetria: {item.symmetry}")
+            raise ValueError(f"Unknown symmetry: {item.symmetry}")
         if item.symmetry == "none":
             x = np.r_[item.c_angles, item.c_angles[0] + 360.0]
             y = np.vstack([interpolated, interpolated[:1]])
@@ -58,7 +58,7 @@ def shape_matrix(item: Photometry) -> np.ndarray:
     a = sample(item, C_GRID, GAMMA_GRID)
     maximum = a.max()
     if maximum <= 0:
-        raise ValueError("Brak emisji w dolnej półprzestrzeni (0–90°).")
+        raise ValueError("No emission in the lower hemisphere (0–90°).")
     return a / maximum
 
 
@@ -123,7 +123,7 @@ def embedding(items: Sequence[Photometry], clusters: int = 3) -> tuple[np.ndarra
     Machine learning is exploratory; no performance claims on synthetic sample data.
     """
     if len(items) < 3:
-        raise ValueError("Analiza ML wymaga przynajmniej 3 opraw.")
+        raise ValueError("ML analysis requires at least 3 luminaires.")
     from sklearn.decomposition import PCA
     from sklearn.cluster import KMeans
     from sklearn.ensemble import IsolationForest

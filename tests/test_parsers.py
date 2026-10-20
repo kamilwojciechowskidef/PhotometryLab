@@ -34,7 +34,7 @@ def ldt_with_planes(symmetry, planes):
     (4, [0, 80, 180, 270]),
 ])
 def test_ldt_rejects_incomplete_symmetry_domain(symmetry, planes):
-    with pytest.raises(PhotometryError, match="zakres.*C"):
+    with pytest.raises(PhotometryError, match="incomplete C-angle range"):
         load_photometry("incomplete.ldt", ldt_with_planes(symmetry, planes))
 
 
