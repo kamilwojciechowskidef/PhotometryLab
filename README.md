@@ -47,7 +47,7 @@ If `py -3` fails to launch the interpreter, check your Python installation and t
 6. Exploratory PCA (2D), KMeans clustering, and optional anomaly flags using Isolation Forest (with at least 8 files).
 7. Numerical estimates of downward luminous flux when intensities can be reliably converted to cd, kept separate from flux metadata.
 8. Synthetic samples, including an LDT example, for checking application behavior and learning the interface.
-9. A programmatic quality report (`assess_quality`) that explicitly separates readiness for shape comparison from readiness for an absolute downward-flux estimate.
+9. A quality report that classifies every imported file as correct, limited, incomplete, unsupported, or damaged; it explicitly separates readiness for shape comparison from readiness for an absolute downward-flux estimate and can be exported to CSV.
 
 ## How the ranking works
 

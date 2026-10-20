@@ -26,3 +26,26 @@ def test_app_demo_flow(monkeypatch):
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected empty demo'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
+
+
+def test_app_exports_quality_report_for_rejected_file(monkeypatch):
+    stub = ModuleType('streamlit')
+    stub.sidebar = nullcontext()
+    noop = lambda *args, **kwargs: None
+    downloaded = []
+    for method in ['set_page_config', 'title', 'caption', 'write', 'header', 'divider',
+                   'warning', 'info', 'dataframe', 'plotly_chart', 'subheader']:
+        setattr(stub, method, noop)
+    stub.download_button = lambda *args, **kwargs: downloaded.append(kwargs.get('file_name'))
+    stub.file_uploader = lambda *a, **k: [SimpleNamespace(name='damaged.ies', getvalue=lambda: b'not an ies')]
+    stub.checkbox = lambda *a, **k: False
+    stub.expander = lambda *a, **k: nullcontext()
+    stub.tabs = lambda labels: [nullcontext() for _ in labels]
+    stub.columns = lambda count: [SimpleNamespace(metric=noop) for _ in range(count)]
+    stub.metric = noop
+    stub.selectbox = lambda label, options, **k: list(options)[0]
+    stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.stop = lambda: (_ for _ in ()).throw(AssertionError('The application must not stop the quality report'))
+    monkeypatch.setitem(sys.modules, 'streamlit', stub)
+    runpy.run_path('app.py', run_name='__main__')
+    assert 'import_quality_report.csv' in downloaded
