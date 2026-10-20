@@ -11,6 +11,7 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, find_similar,
                                shape_matrix)
 from photolab.demo import samples
+from photolab.identifiers import identify_files
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
 
@@ -42,6 +43,7 @@ for upload in files or []:
         name = f"{stem} ({counter}).{suffix}"
     payload[name] = upload.getvalue()
 
+identities_by_filename = {identity.filename: identity for identity in identify_files(payload)}
 parsed = []
 quality_reports = []
 for name, content in payload.items():
@@ -126,9 +128,13 @@ with t2:
     items_by_filename = {item.filename: item for item in parsed}
     for report in quality_reports:
         item = items_by_filename.get(report.filename)
+        identity = identities_by_filename[report.filename]
         down = estimated_downward_lumens(item) if item is not None else None
         table_rows.append({
             "File": report.filename, "Quality status": report.status,
+            "SHA-256": identity.sha256,
+            "Size [bytes]": identity.size_bytes,
+            "Duplicate of": identity.duplicate_of or "no",
             "Ready to compare": "yes" if report.comparison_ready else "no",
             "Format": item.format if item is not None else "unavailable — file rejected",
             "Manufacturer": item.manufacturer if item is not None else "unavailable",

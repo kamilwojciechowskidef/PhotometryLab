@@ -22,6 +22,7 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Identyfikator SHA-256 danych wejściowych i wykrywanie identycznej zawartości w ramach jednego importu; bez trwałego katalogu ani automatycznego scalania rekordów.
 - [ ] Import wsadowy katalogów/ZIP (bezpiecznie, limity rozmiaru), raport błędów i deduplikacja po SHA-256.
 - [ ] Rozdzielenie identyfikatora oprawy od nazwy pliku i producenta.
 - [ ] Prosty trwały magazyn metadanych (np. SQLite), tylko gdy konieczny po pomiarze skali.

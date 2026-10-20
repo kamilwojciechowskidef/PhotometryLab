@@ -7,10 +7,26 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, sample, shape_matrix)
 from photolab.models import Photometry
 from photolab.quality import assess_quality, rejected_file_report
+from photolab.identifiers import identify_files
 
 
 def read_ies(kind="narrow"):
     return load_photometry(f"{kind}.ies", make_ies(kind, kind))
+
+
+def test_file_identity_is_content_based_and_flags_duplicate_bytes():
+    identities = identify_files({
+        "first.ies": b"same bytes",
+        "renamed.ldt": b"same bytes",
+        "different.ies": b"different bytes",
+    })
+    first, duplicate, different = identities
+    assert first.sha256 == duplicate.sha256
+    assert first.size_bytes == len(b"same bytes")
+    assert not first.is_duplicate
+    assert duplicate.duplicate_of == "first.ies"
+    assert different.sha256 != first.sha256
+    assert not different.is_duplicate
 
 
 def make_ldt_with_c_symmetry(isym, c_angles, gamma_angles, intensities):
