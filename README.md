@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Magazyn źródeł i kopie zapasowe](docs/SOURCE_STORAGE.md) — konfiguracja,
+  pobieranie oryginałów, integralność i ponowne parsowanie.
+
 - [Project brief and requirements](docs/PROJECT_BRIEF.md) — thesis scope and research principles.
 - [Development roadmap](docs/ROADMAP.md) — stages P0–P4 and completion criteria; auditing the photometric layer is the priority.
 - [Target architecture and PostgreSQL plan](docs/ARCHITECTURE.md) — current state, storage model, and implementation order.
@@ -78,7 +81,7 @@ With rotation alignment enabled, the candidate matrix is shifted along the C axi
 - Header parameters do not automatically establish luminaire luminous flux. Power and flux should be checked against the product datasheet.
 - PCA, KMeans, and Isolation Forest are **unsupervised learning** methods. They do not provide reliable classification guarantees or demonstrate the quality of similarity results. Validation on diverse real data is required.
 - `DEMO_*` examples are **synthetic** and do not come from manufacturers. They must not serve as empirical evidence for thesis experiments.
-- Imported files have a 5 MB limit. The prototype can register uploaded files in a local PostgreSQL catalogue using their SHA-256 identifiers, metadata, and quality reports. It has no catalogue search interface, user accounts, CAD/DIALux integration, private artifact store, or automatic deletion of duplicates.
+- Imported files have a 5 MB limit. The local PostgreSQL catalogue stores photometry and quality reports, with filtering and comparison selection. Original bytes are archived locally by SHA-256. User accounts, CAD/DIALux integration and automatic deletion are not implemented.
 - Results in the current interface are identified by filenames. The interface assigns distinct names when collisions occur, and the analysis layer still excludes candidates whose filename matches the reference filename. A future catalogue import will use the SHA-256 identifier instead.
 - Support for symmetry codes in the parser does not prove full format compliance. Independent tests and real reference files are required.
 
@@ -117,7 +120,7 @@ Uruchom `python -m photolab.database` przed zapisem z interfejsu.
 Przycisk zapisu zachowuje teraz również natywne kąty, macierz, jednostki
 i metadane oprawy. API `load_stored_photometry(url, file_id)` odtwarza model.
 Starsze rekordy wymagają ponownego wgrania i zapisania pliku, aby uzupełnić
-fotometrię. Oryginalne bajty pliku nadal nie są archiwizowane.
+fotometrię. Zapis w interfejsie archiwizuje też oryginalne bajty w prywatnym magazynie.
 
 ```powershell
 .venv\Scripts\python.exe -m pytest -q

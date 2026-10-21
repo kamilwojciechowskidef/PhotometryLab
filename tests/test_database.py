@@ -8,6 +8,7 @@ from photolab.database import load_stored_photometry
 from photolab.demo import make_ies
 from photolab.parsers import load_photometry
 from photolab.storage import photometry_to_data
+from photolab.artifacts import read_source
 from photolab.database import list_catalogue
 
 
@@ -64,6 +65,20 @@ class FakeConnection:
 
     def commit(self):
         self.committed = True
+
+
+def test_duplicate_import_backfills_source_reference(tmp_path, monkeypatch):
+    cursor = FakeCursor([(10,), None, (20,), (30,)])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: connection)
+    result = register_file_import('unused', original_filename='bad.ies', content=b'bad',
+                                 format_name=None, quality_report=QualityReport('bad.ies', 'damaged', False, False, ()),
+                                 application_version='test', source_root=tmp_path)
+    statement, params = cursor.calls[-1]
+    assert 'UPDATE photolab.photometry_files' in statement
+    assert params == (f'{result.identifier.sha256[:2]}/{result.identifier.sha256}', 20)
+    assert read_source(tmp_path, result.identifier.sha256, 3) == b'bad'
+    assert connection.committed
 
 
 @pytest.mark.parametrize('duplicate', [False, True])

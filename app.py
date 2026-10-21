@@ -7,6 +7,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from dataclasses import replace
+from pathlib import PureWindowsPath
+from photolab.artifacts import artifact_root, read_source, ArtifactError
+from photolab.database import list_sources
 
 from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, find_similar,
@@ -214,7 +217,7 @@ with t2:
     st.divider()
     st.subheader("Local PostgreSQL catalogue")
     st.caption("Only files uploaded in this session can be saved. Synthetic demonstration files are excluded. "
-               "The catalogue stores the SHA-256 identifier, metadata, and quality report; it does not store the original file bytes.")
+               "Original bytes are archived locally; PostgreSQL stores photometry, quality reports and source references.")
     if not uploaded_records:
         st.info("Upload at least one IES or LDT file to save it to the local catalogue.")
     elif st.button("Save uploaded files to PostgreSQL", type="primary"):
@@ -237,9 +240,10 @@ with t2:
                         quality_report=reports_by_filename[display_name],
                         application_version=APP_VERSION,
                         photometry=item,
+                        source_root=artifact_root(),
                         source_description="Streamlit upload",
                     )
-                except (DatabaseError, ValueError) as error:
+                except (DatabaseError, ValueError, OSError) as error:
                     save_errors.append(f"{original_name}: {error}")
                     continue
                 if stored.duplicate:
@@ -252,6 +256,37 @@ with t2:
             st.info(f"Detected {saved_duplicates} duplicate(s); added an import alias instead.")
         for message in save_errors:
             st.error(message)
+
+    if st.checkbox("Browse source archive", value=False, key="browse_sources"):
+        try:
+            source_page = st.number_input('Source archive page', min_value=1, value=1, step=1)
+            source_rows = list_sources(database_url(), offset=(int(source_page) - 1) * 50)
+            if not source_rows:
+                st.info('No source records on this page.')
+            else:
+                sources = {row['file_id']: row for row in source_rows}
+                chosen = st.selectbox('Source file', list(sources),
+                                      format_func=lambda key: f"#{key} · {sources[key]['filename']} · {sources[key]['status']}")
+                source = sources[chosen]
+                if not source['path']:
+                    st.info('This legacy record has no archived source. Upload and save the original again.')
+                else:
+                    content = read_source(artifact_root(), source['sha256'], source['size_bytes'])
+                    filename = PureWindowsPath(source['filename'] or 'source.ies').name
+                    st.success('Source integrity verified: SHA-256 and size match.')
+                    st.download_button('Download original source', content, file_name=filename,
+                                       mime='application/octet-stream', key=f'source_download_{chosen}')
+                    if st.button('Reparse source and preview quality', key=f'reparse_{chosen}'):
+                        try:
+                            reparsed = load_photometry(filename, content)
+                            report = assess_quality(reparsed)
+                        except PhotometryError as error:
+                            report = rejected_file_report(filename, str(error))
+                        st.write({'status': report.status, 'comparison_ready': report.comparison_ready,
+                                  'downward_flux_ready': report.downward_flux_ready, 'issues': list(report.issues)})
+                        st.caption('Preview uses the current parser. Stored photometry is unchanged.')
+        except (DatabaseError, ArtifactError, OSError) as error:
+            st.error(str(error))
 
 with t3:
     st.write("PCA projection and KMeans clustering are for **dataset exploration**. "
