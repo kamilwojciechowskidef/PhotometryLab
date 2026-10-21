@@ -61,7 +61,7 @@ def test_app_demo_flow(monkeypatch):
                    'warning', 'info', 'error', 'success', 'dataframe', 'download_button', 'plotly_chart', 'subheader']:
         setattr(stub, method, noop)
     stub.file_uploader = lambda *a, **k: []
-    stub.checkbox = lambda *a, **k: False if k.get('key') == 'browse_catalogue' else True
+    stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources') else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
     stub.tabs = lambda labels: [nullcontext() for _ in labels]
