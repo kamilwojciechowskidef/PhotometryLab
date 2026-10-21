@@ -78,7 +78,7 @@ With rotation alignment enabled, the candidate matrix is shifted along the C axi
 - Header parameters do not automatically establish luminaire luminous flux. Power and flux should be checked against the product datasheet.
 - PCA, KMeans, and Isolation Forest are **unsupervised learning** methods. They do not provide reliable classification guarantees or demonstrate the quality of similarity results. Validation on diverse real data is required.
 - `DEMO_*` examples are **synthetic** and do not come from manufacturers. They must not serve as empirical evidence for thesis experiments.
-- Imported files have a 5 MB limit. The prototype has no catalogue import or search interface, user accounts, CAD/DIALux integration, or content-based deduplication yet. It can calculate a SHA-256 identifier from the original file bytes for a future catalogue import.
+- Imported files have a 5 MB limit. The prototype can register uploaded files in a local PostgreSQL catalogue using their SHA-256 identifiers, metadata, and quality reports. It has no catalogue search interface, user accounts, CAD/DIALux integration, private artifact store, or automatic deletion of duplicates.
 - Results in the current interface are identified by filenames. The interface assigns distinct names when collisions occur, and the analysis layer still excludes candidates whose filename matches the reference filename. A future catalogue import will use the SHA-256 identifier instead.
 - Support for symmetry codes in the parser does not prove full format compliance. Independent tests and real reference files are required.
 

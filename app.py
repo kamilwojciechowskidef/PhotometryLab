@@ -11,8 +11,12 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, find_similar,
                                shape_matrix)
 from photolab.demo import samples
+from photolab.database import DatabaseError, database_url, register_file_import
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
+
+
+APP_VERSION = "0.1"
 
 st.set_page_config(page_title="PhotometryLab | Photometric Analysis", page_icon="💡", layout="wide")
 
@@ -32,15 +36,19 @@ with st.sidebar:
     st.caption("Supported: IES LM-63 Type C with TILT=NONE and selected EULUMDAT LDT variants. Unsupported files are explicitly rejected.")
 
 payload: dict[str, bytes] = samples() if with_demo else {}
+uploaded_records: dict[str, tuple[str, bytes]] = {}
 for upload in files or []:
-    name = upload.name
+    original_name = upload.name
+    name = original_name
     if name in payload:
         stem, suffix = name.rsplit(".", 1)
         counter = 2
         while f"{stem} ({counter}).{suffix}" in payload:
             counter += 1
         name = f"{stem} ({counter}).{suffix}"
-    payload[name] = upload.getvalue()
+    content = upload.getvalue()
+    payload[name] = content
+    uploaded_records[name] = (original_name, content)
 
 parsed = []
 quality_reports = []
@@ -157,6 +165,47 @@ with t2:
                     st.caption("• " + note)
             else:
                 st.caption(f"{report.filename}: no additional parser warnings.")
+
+    st.divider()
+    st.subheader("Local PostgreSQL catalogue")
+    st.caption("Only files uploaded in this session can be saved. Synthetic demonstration files are excluded. "
+               "The catalogue stores the SHA-256 identifier, metadata, and quality report; it does not store the original file bytes.")
+    if not uploaded_records:
+        st.info("Upload at least one IES or LDT file to save it to the local catalogue.")
+    elif st.button("Save uploaded files to PostgreSQL", type="primary"):
+        saved_new = 0
+        saved_duplicates = 0
+        save_errors = []
+        try:
+            url = database_url()
+        except DatabaseError as error:
+            save_errors.append(str(error))
+        else:
+            for display_name, (original_name, content) in uploaded_records.items():
+                item = items_by_filename.get(display_name)
+                try:
+                    stored = register_file_import(
+                        url,
+                        original_filename=original_name,
+                        content=content,
+                        format_name=item.format if item is not None else None,
+                        quality_report=reports_by_filename[display_name],
+                        application_version=APP_VERSION,
+                        source_description="Streamlit upload",
+                    )
+                except (DatabaseError, ValueError) as error:
+                    save_errors.append(f"{original_name}: {error}")
+                    continue
+                if stored.duplicate:
+                    saved_duplicates += 1
+                else:
+                    saved_new += 1
+        if saved_new:
+            st.success(f"Added {saved_new} new file(s) to the catalogue.")
+        if saved_duplicates:
+            st.info(f"Detected {saved_duplicates} duplicate(s); added an import alias instead.")
+        for message in save_errors:
+            st.error(message)
 
 with t3:
     st.write("PCA projection and KMeans clustering are for **dataset exploration**. "
