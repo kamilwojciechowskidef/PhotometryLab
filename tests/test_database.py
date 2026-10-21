@@ -67,6 +67,19 @@ class FakeConnection:
         self.committed = True
 
 
+def test_import_uses_existing_batch_without_creating_another(monkeypatch):
+    cursor = FakeCursor([(20,), (30,)])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: connection)
+    result = register_file_import('unused', original_filename='bad.ies', content=b'bad',
+                                 format_name=None, quality_report=QualityReport('bad.ies', 'damaged', False, False, ()),
+                                 application_version='test', batch_id=42)
+    assert result.import_batch_id == 42
+    assert not any('INSERT INTO photolab.import_batches' in sql for sql, _ in cursor.calls)
+    assert cursor.calls[-1][1] == (20, 42, 'bad.ies')
+    assert connection.committed
+
+
 def test_duplicate_import_backfills_source_reference(tmp_path, monkeypatch):
     cursor = FakeCursor([(10,), None, (20,), (30,)])
     connection = FakeConnection(cursor)

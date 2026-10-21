@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Import wsadowy](docs/BULK_IMPORT.md) — wiele plików lub ZIP, migracja `004`,
+  limity, wspólne partie i historia raportów CSV.
+
 - [Magazyn źródeł i kopie zapasowe](docs/SOURCE_STORAGE.md) — konfiguracja,
   pobieranie oryginałów, integralność i ponowne parsowanie.
 

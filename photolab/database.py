@@ -139,6 +139,7 @@ def register_file_import(
     provenance: Mapping[str, object] | None = None,
     photometry: Photometry | None = None,
     source_root: Path | None = None,
+    batch_id: int | None = None,
 ) -> StoredImport:
     """Register one imported file and its alias in a single database transaction.
 
@@ -167,15 +168,15 @@ def register_file_import(
     try:
         with psycopg.connect(url) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO photolab.import_batches (source_description, application_version)
-                    VALUES (%s, %s)
-                    RETURNING id
-                    """,
-                    (source_description, application_version),
-                )
-                import_batch_id = cursor.fetchone()[0]
+                if batch_id is None:
+                    cursor.execute(
+                        """INSERT INTO photolab.import_batches (source_description, application_version)
+                           VALUES (%s, %s) RETURNING id""",
+                        (source_description, application_version),
+                    )
+                    import_batch_id = cursor.fetchone()[0]
+                else:
+                    import_batch_id = batch_id
 
                 cursor.execute(
                     """

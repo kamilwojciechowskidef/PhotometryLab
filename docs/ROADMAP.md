@@ -22,6 +22,9 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Kod importu wielu plików/ZIP, wspólna partia, limity i historia raportów
+  (migracja `004`); wymaga weryfikacji ręcznej w środowisku użytkownika.
+
 - [x] Magazyn oryginałów według SHA-256, integracja importu, pobieranie,
   kontrola integralności i podgląd ponownego parsowania.
 
