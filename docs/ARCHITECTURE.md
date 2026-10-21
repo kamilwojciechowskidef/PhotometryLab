@@ -71,6 +71,15 @@ uzupełniane przed zapisem.
 
 ## Przechowywanie danych
 
+Migracja `003` wprowadza tabelę `photometries` z jednym rekordem na `file_id`.
+Wersjonowany dokument JSONB (wersja 1) zachowuje wszystkie pola modelu,
+w tym natywną siatkę, macierz i jednostki. Nie zapisujemy znormalizowanej
+siatki zamiast danych natywnych: pozwala to ponownie obliczać cechy.
+Zapis następuje w transakcji importu. Duplikat uzupełnia brakujący rekord,
+ale nie nadpisuje istniejącej fotometrii. Odczyt waliduje odtworzony model.
+Starsze rekordy katalogowe wymagają ponownego przesłania pliku. Widok katalogu
+oraz archiwum oryginalnych bajtów pozostają kolejnymi etapami.
+
 Oryginalne pliki producentów należy przechowywać w prywatnym lokalnym magazynie
 poza Gitem, np. pod nazwą ich SHA-256. PostgreSQL powinien przechowywać hash,
 rozmiar, pochodzenie, licencję, status jakości, metadane i dane potrzebne do

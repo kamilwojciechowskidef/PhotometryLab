@@ -104,6 +104,13 @@ examples/              Exported IES/LDT examples
 
 ## Tests
 
+Trwała fotometria: migracja `003` dodaje tabelę `photolab.photometries`.
+Uruchom `python -m photolab.database` przed zapisem z interfejsu.
+Przycisk zapisu zachowuje teraz również natywne kąty, macierz, jednostki
+i metadane oprawy. API `load_stored_photometry(url, file_id)` odtwarza model.
+Starsze rekordy wymagają ponownego wgrania i zapisania pliku, aby uzupełnić
+fotometrię. Oryginalne bajty pliku nadal nie są archiwizowane.
+
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
 ```

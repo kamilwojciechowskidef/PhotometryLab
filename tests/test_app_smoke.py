@@ -87,4 +87,5 @@ def test_app_saves_uploaded_file_to_catalogue(monkeypatch):
 
     assert registered[0]['original_filename'] == 'fixture.ies'
     assert registered[0]['source_description'] == 'Streamlit upload'
+    assert registered[0]['photometry'].filename == 'fixture.ies'
     assert notices == ['Added 1 new file(s) to the catalogue.']

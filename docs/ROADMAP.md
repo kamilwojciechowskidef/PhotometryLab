@@ -22,6 +22,10 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Kod zapisu i odczytu natywnej fotometrii w PostgreSQL (migracja `003`),
+  powiązanie z SHA-256 oraz integracja z ręcznym zapisem w Streamlit.
+- [ ] Weryfikacja zapisu i odczytu fotometrii na rzeczywistej bazie testowej.
+
 - [ ] Import wsadowy katalogów/ZIP (bezpiecznie, limity rozmiaru), raport błędów i deduplikacja po SHA-256.
 - [ ] Rozdzielenie identyfikatora oprawy od nazwy pliku i producenta.
 - [ ] Prosty trwały magazyn metadanych (np. SQLite), tylko gdy konieczny po pomiarze skali.
