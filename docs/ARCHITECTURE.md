@@ -71,6 +71,10 @@ uzupełniane przed zapisem.
 
 ## Przechowywanie danych
 
+Magazyn źródeł archiwizuje oryginalne bajty i uzupełnia `private_artifact_path`,
+również przy ponownym imporcie. Konfigurację, zachowanie przy awariach i kopie
+zapasowe opisuje [SOURCE_STORAGE.md](SOURCE_STORAGE.md). Nie wymaga nowej migracji.
+
 Przeglądarka katalogu pobiera metadane stronami po 50 rekordów i filtruje je
 na serwerze. Macierze są pobierane tylko dla wybranych pozycji. Wybór obejmuje
 bieżącą stronę i filtry. Zapisane oprawy są dołączane do lokalnego porównania,
@@ -84,7 +88,7 @@ siatki zamiast danych natywnych: pozwala to ponownie obliczać cechy.
 Zapis następuje w transakcji importu. Duplikat uzupełnia brakujący rekord,
 ale nie nadpisuje istniejącej fotometrii. Odczyt waliduje odtworzony model.
 Starsze rekordy katalogowe wymagają ponownego przesłania pliku. Widok katalogu
-oraz archiwum oryginalnych bajtów pozostają kolejnymi etapami.
+oraz archiwum oryginalnych bajtów są już zaimplementowane w kolejnych przyrostach.
 
 Oryginalne pliki producentów należy przechowywać w prywatnym lokalnym magazynie
 poza Gitem, np. pod nazwą ich SHA-256. PostgreSQL powinien przechowywać hash,

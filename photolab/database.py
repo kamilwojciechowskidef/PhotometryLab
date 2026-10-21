@@ -14,6 +14,7 @@ from .identifiers import FileIdentifier, identify_file
 from .quality import QualityReport
 from .models import Photometry
 from .storage import photometry_to_data, photometry_from_data
+from .artifacts import save_source
 
 
 class DatabaseError(RuntimeError):
@@ -137,6 +138,7 @@ def register_file_import(
     private_artifact_path: str | None = None,
     provenance: Mapping[str, object] | None = None,
     photometry: Photometry | None = None,
+    source_root: Path | None = None,
 ) -> StoredImport:
     """Register one imported file and its alias in a single database transaction.
 
@@ -154,6 +156,8 @@ def register_file_import(
     if photometry is not None and photometry.format != format_name:
         raise ValueError("Photometry format does not match the file format.")
     identifier = identify_file(content)
+    if source_root is not None:
+        private_artifact_path = save_source(source_root, content)
     report_payload = {
         "status": quality_report.status,
         "comparison_ready": quality_report.comparison_ready,
@@ -216,6 +220,11 @@ def register_file_import(
                     (file_id, import_batch_id, original_filename),
                 )
                 alias_id = cursor.fetchone()[0]
+                if source_root is not None:
+                    cursor.execute(
+                        'UPDATE photolab.photometry_files SET private_artifact_path = %s WHERE id = %s',
+                        (private_artifact_path, file_id),
+                    )
                 if photometry_data is not None:
                     cursor.execute(
                         """INSERT INTO photolab.photometries
@@ -234,6 +243,23 @@ def register_file_import(
         identifier=identifier,
         duplicate=duplicate,
     )
+
+
+def list_sources(url: str, offset: int = 0) -> list[dict]:
+    """List source metadata including rejected and legacy imports."""
+    if offset < 0:
+        raise ValueError('Invalid page offset.')
+    try:
+        with psycopg.connect(url, connect_timeout=5) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute('''SELECT f.id, f.sha256, f.size_bytes, f.private_artifact_path,
+                    f.quality_status, (SELECT original_filename FROM photolab.file_aliases
+                    WHERE file_id = f.id ORDER BY id LIMIT 1)
+                    FROM photolab.photometry_files f ORDER BY f.id LIMIT 50 OFFSET %s''', (offset,))
+                return [dict(zip(('file_id', 'sha256', 'size_bytes', 'path', 'status', 'filename'), row))
+                        for row in cursor.fetchall()]
+    except psycopg.Error:
+        raise DatabaseError('Cannot read the source catalogue.') from None
 
 
 def list_catalogue(url: str, *, manufacturer: str = "", model: str = "",

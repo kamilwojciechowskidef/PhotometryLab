@@ -22,6 +22,9 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Magazyn oryginałów według SHA-256, integracja importu, pobieranie,
+  kontrola integralności i podgląd ponownego parsowania.
+
 - [x] Przeglądarka PostgreSQL: filtry producenta/modelu, strony po 50 rekordów,
   wybór zapisanej fotometrii do porównania oraz rozróżnienie nazw w interfejsie.
 
