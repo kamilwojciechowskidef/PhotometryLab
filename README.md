@@ -10,6 +10,7 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 - [Project brief and requirements](docs/PROJECT_BRIEF.md) — thesis scope and research principles.
 - [Development roadmap](docs/ROADMAP.md) — stages P0–P4 and completion criteria; auditing the photometric layer is the priority.
+- [Target architecture and PostgreSQL plan](docs/ARCHITECTURE.md) — current state, storage model, and implementation order.
 - [Agent instructions](AGENTS.md) — rules for working on code and documentation.
 - [Initial task template](CODEX_START.md) — guidance for handing the project over to an agent.
 

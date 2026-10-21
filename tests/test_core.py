@@ -121,7 +121,7 @@ def test_ldt_isym_plane90_preserves_descending_file_order():
 )
 def test_ldt_symmetry_rejects_missing_boundary_c_plane(isym, c_angles, intensities):
     data = make_ldt_with_c_symmetry(isym, c_angles, [0, 90], intensities)
-    with pytest.raises(PhotometryError, match="brzegowych"):
+    with pytest.raises(PhotometryError, match="niepełny zakres kątów C"):
         load_photometry("incomplete.ldt", data)
 
 
