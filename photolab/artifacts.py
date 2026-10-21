@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 """Private, content-addressed archive of original file bytes."""
+=======
+"""Local content-addressed source archive; filenames never determine disk paths."""
+>>>>>>> origin/main
 import os
 from pathlib import Path
 import re
@@ -12,7 +16,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ArtifactError(ValueError):
+<<<<<<< HEAD
     """Source is missing, corrupt or inaccessible."""
+=======
+    """Missing, corrupted or inaccessible source artifact."""
+>>>>>>> origin/main
 
 
 def artifact_root() -> Path:
@@ -33,7 +41,12 @@ def _path(root: Path, digest: str) -> Path:
         raise ArtifactError('Invalid source identifier.')
     root = Path(root).resolve()
     target = root / digest[:2] / digest
+<<<<<<< HEAD
     # Do not resolve a hard link concurrently published by another writer.
+=======
+    # Generated components cannot contain traversal. Inspect reparse points
+    # directly instead of resolving a hard-link path while it is published.
+>>>>>>> origin/main
     for component in (target.parent, target):
         try:
             metadata = component.lstat()
@@ -46,8 +59,13 @@ def _path(root: Path, digest: str) -> Path:
 
 
 def read_source(root: Path, digest: str, size_bytes: int) -> bytes:
+<<<<<<< HEAD
     try:
         target = _path(root, digest)
+=======
+    target = _path(root, digest)
+    try:
+>>>>>>> origin/main
         with target.open('rb') as stream:
             content = stream.read(MAX_SOURCE_BYTES + 1)
     except OSError:
@@ -61,9 +79,15 @@ def save_source(root: Path, content: bytes) -> str:
     identifier = identify_file(content)
     if len(content) > MAX_SOURCE_BYTES:
         raise ArtifactError('Source exceeds the 5 MB limit.')
+<<<<<<< HEAD
     temporary = None
     try:
         target = _path(root, identifier.sha256)
+=======
+    target = _path(root, identifier.sha256)
+    temporary = None
+    try:
+>>>>>>> origin/main
         target.parent.mkdir(parents=True, exist_ok=True)
         target = _path(root, identifier.sha256)
         if not target.exists():
@@ -72,6 +96,10 @@ def save_source(root: Path, content: bytes) -> str:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
+<<<<<<< HEAD
+=======
+            # Publish complete bytes atomically without overwriting a concurrent writer.
+>>>>>>> origin/main
             try:
                 os.link(temporary, target)
             except FileExistsError:

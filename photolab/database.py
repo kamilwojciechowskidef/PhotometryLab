@@ -246,7 +246,11 @@ def register_file_import(
 
 
 def list_sources(url: str, offset: int = 0) -> list[dict]:
+<<<<<<< HEAD
     """List source metadata including rejected and legacy imports."""
+=======
+    """Include rejected and legacy records, without reading any source bytes."""
+>>>>>>> origin/main
     if offset < 0:
         raise ValueError('Invalid page offset.')
     try:

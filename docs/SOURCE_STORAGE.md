@@ -9,7 +9,11 @@ PHOTOLAB_ARTIFACT_DIR=D:/PhotometryLab-private/sources
 ```
 
 Zmienna środowiskowa ma pierwszeństwo. Ścieżki względne odnoszą się do katalogu
+<<<<<<< HEAD
 projektu. Katalog nie jest szyfrowany: dostęp regulują uprawnienia systemu.
+=======
+projektu. Katalog nie jest szyfrowany: ogranicz dostęp uprawnieniami systemu.
+>>>>>>> origin/main
 Zmiana lokalizacji wymaga przeniesienia całej zawartości magazynu.
 
 Plik trafia pod `<pierwsze 2 znaki SHA-256>/<SHA-256>`. Nazwa użytkownika nie
