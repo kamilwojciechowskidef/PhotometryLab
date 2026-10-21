@@ -12,6 +12,8 @@ from psycopg.types.json import Jsonb
 
 from .identifiers import FileIdentifier, identify_file
 from .quality import QualityReport
+from .models import Photometry
+from .storage import photometry_to_data, photometry_from_data
 
 
 class DatabaseError(RuntimeError):
@@ -134,12 +136,13 @@ def register_file_import(
     source_description: str | None = None,
     private_artifact_path: str | None = None,
     provenance: Mapping[str, object] | None = None,
+    photometry: Photometry | None = None,
 ) -> StoredImport:
     """Register one imported file and its alias in a single database transaction.
 
-    The function stores metadata only. The original bytes remain in the private
-    artifact store; ``private_artifact_path`` may point to that store once it is
-    implemented. An existing SHA-256 record is retained and receives a new alias
+    Stores metadata and optional native photometry, but not original file bytes.
+    ``private_artifact_path`` can reference a separately managed artifact store.
+    An existing SHA-256 record is retained and receives a new alias
     for this import, without deleting or overwriting prior provenance.
     """
     if not original_filename.strip():
@@ -147,6 +150,9 @@ def register_file_import(
     if not application_version.strip():
         raise ValueError("The application version must not be blank.")
 
+    photometry_data = photometry_to_data(photometry) if photometry is not None else None
+    if photometry is not None and photometry.format != format_name:
+        raise ValueError("Photometry format does not match the file format.")
     identifier = identify_file(content)
     report_payload = {
         "status": quality_report.status,
@@ -210,6 +216,13 @@ def register_file_import(
                     (file_id, import_batch_id, original_filename),
                 )
                 alias_id = cursor.fetchone()[0]
+                if photometry_data is not None:
+                    cursor.execute(
+                        """INSERT INTO photolab.photometries
+                           (file_id, application_version, data) VALUES (%s, %s, %s)
+                           ON CONFLICT (file_id) DO NOTHING""",
+                        (file_id, application_version, Jsonb(photometry_data)),
+                    )
             connection.commit()
     except psycopg.Error as error:
         raise DatabaseError("PostgreSQL file registration failed.") from error
@@ -221,6 +234,28 @@ def register_file_import(
         identifier=identifier,
         duplicate=duplicate,
     )
+
+
+def load_stored_photometry(url: str, file_id: int) -> Photometry | None:
+    """Return validated native photometry, or None for a metadata-only record."""
+    try:
+        with psycopg.connect(url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT schema_version, data FROM photolab.photometries WHERE file_id = %s",
+                    (file_id,),
+                )
+                row = cursor.fetchone()
+    except psycopg.Error:
+        raise DatabaseError("PostgreSQL photometry read failed.") from None
+    if row is None:
+        return None
+    if row[0] != 1:
+        raise DatabaseError("Unsupported stored photometry schema version.")
+    try:
+        return photometry_from_data(row[1])
+    except (TypeError, ValueError, KeyError, IndexError):
+        raise DatabaseError("Stored photometry is invalid.") from None
 
 
 if __name__ == "__main__":

@@ -4,6 +4,10 @@ import pytest
 
 from photolab.database import DatabaseError, database_url, migration_files, register_file_import
 from photolab.quality import QualityReport
+from photolab.database import load_stored_photometry
+from photolab.demo import make_ies
+from photolab.parsers import load_photometry
+from photolab.storage import photometry_to_data
 
 
 class FakeCursor:
@@ -40,6 +44,54 @@ class FakeConnection:
 
     def commit(self):
         self.committed = True
+
+
+@pytest.mark.parametrize('duplicate', [False, True])
+def test_import_persists_photometry_for_new_and_existing_files(monkeypatch, duplicate):
+    cursor = FakeCursor([(10,), None, (20,), (30,)] if duplicate else [(10,), (20,), (30,)])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: connection)
+    content = make_ies('Test', 'oval')
+    item = load_photometry('test.ies', content)
+    result = register_file_import(
+        'unused', original_filename='test.ies', content=content,
+        format_name=item.format, quality_report=QualityReport('test.ies', 'valid', True, True, ()),
+        application_version='test', photometry=item,
+    )
+    assert result.duplicate == duplicate
+    assert connection.committed
+    statement, params = cursor.calls[-1]
+    assert 'ON CONFLICT (file_id) DO NOTHING' in statement
+    assert params[0] == 20
+    assert params[2].obj == photometry_to_data(item)
+
+
+def test_load_stored_photometry(monkeypatch):
+    item = load_photometry('test.ies', make_ies('Test', 'oval'))
+    cursor = FakeCursor([(1, photometry_to_data(item)), None])
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: FakeConnection(cursor))
+    assert photometry_to_data(load_stored_photometry('unused', 20)) == photometry_to_data(item)
+    assert load_stored_photometry('unused', 21) is None
+
+
+def test_photometry_write_failure_does_not_commit(monkeypatch):
+    import psycopg
+    cursor = FakeCursor([(10,), (20,), (30,)])
+    execute = cursor.execute
+    def fail_on_photometry(statement, parameters=None):
+        if 'INSERT INTO photolab.photometries' in statement:
+            raise psycopg.DatabaseError('write failed')
+        execute(statement, parameters)
+    cursor.execute = fail_on_photometry
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: connection)
+    content = make_ies('Test', 'oval')
+    item = load_photometry('test.ies', content)
+    with pytest.raises(DatabaseError):
+        register_file_import('unused', original_filename='test.ies', content=content,
+                             format_name=item.format, quality_report=QualityReport('test.ies', 'valid', True, True, ()),
+                             application_version='test', photometry=item)
+    assert not connection.committed
 
 
 def test_database_url_reads_dotenv_and_environment_takes_priority(tmp_path, monkeypatch):

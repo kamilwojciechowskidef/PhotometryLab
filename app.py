@@ -191,6 +191,7 @@ with t2:
                         format_name=item.format if item is not None else None,
                         quality_report=reports_by_filename[display_name],
                         application_version=APP_VERSION,
+                        photometry=item,
                         source_description="Streamlit upload",
                     )
                 except (DatabaseError, ValueError) as error:
