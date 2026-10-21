@@ -4,7 +4,7 @@ Migracja `005` tworzy `photolab.feature_sets`. Każda oprawa gotowa do porównan
 otrzymuje przy imporcie niezmienną wersję cechy:
 
 ```text
-shape-v1-c36-g19-maxnorm-weighted-canonical-lsh96
+shape-v2-c36-g19-maxnorm-weighted-canonical-centered-lsh96
 ```
 
 Cecha ma 684 wartości `float32`: siatka C 0–350° co 10° i gamma 0–90° co 5°.
@@ -13,17 +13,20 @@ cosinus oraz RMSE. Przed zapisem wybierana jest kanoniczna rotacja C. To pozwala
 rozpoznać identyczny rozsył zapisany z obrotem układu współrzędnych.
 
 Do szybkiego wskazania kandydatów zapisywanych jest osiem 12-bitowych koszyków
-LSH, zdefiniowanych przez stały seed i wersję algorytmu. PostgreSQL używa ośmiu
-indeksów B-tree. Wyszukiwanie pobiera rekordy pasujące do co najmniej jednego
-koszyka, a następnie dokładnie oblicza istniejące RMSE i cosinus dla tej puli.
+LSH, zdefiniowanych przez stały seed i wersję algorytmu. Przed kodowaniem każdy
+wektor jest centrowany własną średnią, aby ograniczyć koszyki wspólne dla wielu
+dodatnich rozsyłów. PostgreSQL używa ośmiu indeksów B-tree. Wyszukiwanie pobiera
+rekordy pasujące do co najmniej jednego koszyka, a następnie dokładnie oblicza
+istniejące RMSE i cosinus dla tej puli.
 Koszyki są przybliżonym filtrem: nie stanowią dowodu, że najbliższa oprawa z
 całej bazy zawsze zostanie odnaleziona. Recall i czas trzeba zmierzyć na
 rzeczywistym zbiorze przed wykorzystaniem wyniku w pracy.
 
 ## Operacja dla 1,5–3 mln plików
 
-Po migracji nowe importy tworzą cechę automatycznie. Dla opraw istniejących
-przed migracją uruchamiaj worker poza Streamlit:
+Po migracji nowe importy tworzą cechę automatycznie. Zmiana wersji cechy
+oznacza nowy, równoległy indeks; dla opraw istniejących uruchamiaj worker poza
+Streamlit, aż zindeksuje bieżącą wersję:
 
 ```powershell
 .venv\Scripts\python.exe -m photolab.indexing --batch-size 200 --max-records 10000

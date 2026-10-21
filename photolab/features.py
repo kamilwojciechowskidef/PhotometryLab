@@ -11,7 +11,7 @@ from .analysis import C_GRID, GAMMA_GRID, weighted_shape_vector
 from .models import Photometry
 
 
-FEATURE_VERSION = "shape-v1-c36-g19-maxnorm-weighted-canonical-lsh96"
+FEATURE_VERSION = "shape-v2-c36-g19-maxnorm-weighted-canonical-centered-lsh96"
 FEATURE_DIMENSIONS = len(C_GRID) * len(GAMMA_GRID)
 LSH_BANDS = 8
 LSH_BITS_PER_BAND = 12
@@ -46,9 +46,22 @@ def _canonical_vector(item: Photometry) -> tuple[np.ndarray, int]:
     return np.ascontiguousarray(np.roll(matrix, shift, axis=0).reshape(-1), dtype="<f4"), int(C_GRID[shift])
 
 
-def _buckets(vector: np.ndarray) -> tuple[int, ...]:
-    bits = (_projections() @ vector >= 0).astype(np.uint8).reshape(LSH_BANDS, LSH_BITS_PER_BAND)
-    return tuple(sum(int(bit) << index for index, bit in enumerate(band)) for band in bits)
+def feature_bucket_matrix(vectors: np.ndarray) -> np.ndarray:
+    """Return LSH codes after centering each vector for more selective signs."""
+    vectors = np.asarray(vectors, dtype=np.float32)
+    if vectors.ndim == 1:
+        vectors = vectors.reshape(1, -1)
+    if vectors.ndim != 2 or vectors.shape[1] != FEATURE_DIMENSIONS:
+        raise ValueError(f"Feature vector must contain {FEATURE_DIMENSIONS} values.")
+    centered = vectors - vectors.mean(axis=1, keepdims=True)
+    bits = (centered @ _projections().T >= 0).reshape(-1, LSH_BANDS, LSH_BITS_PER_BAND)
+    weights = (1 << np.arange(LSH_BITS_PER_BAND, dtype=np.uint16))[None, None, :]
+    return np.sum(bits.astype(np.uint16) * weights, axis=2, dtype=np.uint16)
+
+
+def feature_buckets(vector: np.ndarray) -> tuple[int, ...]:
+    """Return reproducible LSH bucket codes for one flattened feature vector."""
+    return tuple(int(value) for value in feature_bucket_matrix(vector)[0])
 
 
 def build_feature(item: Photometry) -> FeatureSet:
@@ -59,4 +72,4 @@ def build_feature(item: Photometry) -> FeatureSet:
         raise ValueError("Cannot create a feature for an empty distribution.")
     digest = sha256(FEATURE_VERSION.encode("ascii") + vector.tobytes()).hexdigest()
     return FeatureSet(vector=vector, l2_norm=norm, canonical_rotation=rotation,
-                      digest=digest, buckets=_buckets(vector))
+                      digest=digest, buckets=feature_buckets(vector))

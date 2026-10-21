@@ -47,7 +47,7 @@ def test_candidate_lookup_uses_all_lsh_buckets_as_parameters(monkeypatch):
     reference = load_photometry("reference.ies", make_ies("Test", "oval"))
     feature, ids = candidate_file_ids("unused", reference, max_candidates=123)
     assert ids == [7, 11]
-    assert cursor.parameters[0].startswith("shape-v1-")
+    assert cursor.parameters[0].startswith("shape-v2-")
     assert cursor.parameters[1:9] == feature.buckets
     assert cursor.parameters[9:17] == feature.buckets
     assert cursor.parameters[-1] == 123

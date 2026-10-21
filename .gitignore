@@ -22,6 +22,7 @@ dist/
 data/raw/
 data/private/
 experiments/runs/
+benchmark/
 *.sqlite3
 *.db
 

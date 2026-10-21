@@ -27,6 +27,9 @@ pozostają do wykonania.
 - [ ] Benchmark na reprezentatywnej kopii bazy dla 1,5–3 mln plików:
   czas importu, rozmiar tabel i indeksów, czas kandydatów, recall względem
   pełnego rankingu na oznaczonej próbce oraz obciążenie PostgreSQL.
+  Dostępny jest pierwszy benchmark syntetyczny algorytmu indeksu
+  (`photolab.benchmark`): zapisuje JSON/CSV, pracuje partiami i nie dotyka
+  PostgreSQL. Nie zastępuje on jeszcze pomiaru na reprezentatywnej kopii bazy.
 
 - [x] Kod importu wielu plików/ZIP, wspólna partia, limity i historia raportów
   (migracja `004`); wymaga weryfikacji ręcznej w środowisku użytkownika.
