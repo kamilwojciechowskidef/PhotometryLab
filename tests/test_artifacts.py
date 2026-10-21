@@ -4,11 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-<<<<<<< HEAD
 from photolab.artifacts import ArtifactError, save_source, read_source, artifact_root
-=======
-from photolab.artifacts import ArtifactError, save_source, read_source
->>>>>>> origin/main
 from photolab.identifiers import identify_file
 
 
@@ -17,10 +13,6 @@ def test_exact_bytes_and_duplicate_archive(tmp_path):
     key = save_source(tmp_path, content)
     assert save_source(tmp_path, content) == key
     assert read_source(tmp_path, identify_file(content).sha256, len(content)) == content
-<<<<<<< HEAD
-=======
-    assert len(list(tmp_path.rglob('*.*'))) == 0
->>>>>>> origin/main
     assert len([p for p in tmp_path.rglob('*') if p.is_file()]) == 1
 
 
@@ -92,7 +84,6 @@ def test_failed_database_keeps_recoverable_source(tmp_path, monkeypatch):
                              format_name=None, quality_report=rejected_file_report('bad.ies', 'broken'),
                              application_version='test', source_root=tmp_path)
     assert read_source(tmp_path, identify_file(b'bad').sha256, 3) == b'bad'
-<<<<<<< HEAD
 
 
 def test_configuration_environment_overrides_dotenv(tmp_path, monkeypatch):
@@ -102,5 +93,3 @@ def test_configuration_environment_overrides_dotenv(tmp_path, monkeypatch):
     assert artifact_root() == (tmp_path / 'private').resolve()
     monkeypatch.setenv('PHOTOLAB_ARTIFACT_DIR', 'alternative')
     assert artifact_root() == (tmp_path / 'alternative').resolve()
-=======
->>>>>>> origin/main
