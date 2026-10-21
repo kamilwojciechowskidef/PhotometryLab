@@ -29,7 +29,7 @@ def make_ies(label: str, kind: str, watts: float = 30) -> bytes:
     if len(values) == 1:
         values = np.broadcast_to(values, (len(cs), len(gamma))).copy()
     values[-1] = values[0]
-    rows = ["IESNA:LM-63-2002", "[MANUFAC] PRÓBKI SYNTETYCZNE / NIE PRODUCENT",
+    rows = ["IESNA:LM-63-2002", "[MANUFAC] SYNTHETIC SAMPLES / NOT A MANUFACTURER",
             f"[LUMCAT] {label}", "TILT=NONE", "1 -1 1 19 37 1 2 0.5 0.5 0.1",
             f"1 1 {watts:.2f}", " ".join(map(str, gamma)), " ".join(map(str, cs))]
     rows.extend(" ".join(f"{value:.5f}" for value in plane) for plane in values)
@@ -41,7 +41,7 @@ def make_ldt(label: str, kind: str, luminous_flux_lm: int = 3500) -> bytes:
     cs = np.arange(0, 360, 10)
     gamma = np.arange(0, 181, 10)
     raw = _pattern(kind, gamma, np.array([0.0])).reshape(-1) / (luminous_flux_lm/1000)
-    lines = ["PRÓBKI SYNTETYCZNE", "1", "1", "36", "10", "19", "10",
+    lines = ["SYNTHETIC SAMPLES", "1", "1", "36", "10", "19", "10",
              "DEMO", label, f"{label}-01", "demo.ldt", "2026 demo", "300", "300", "40",
              "280", "280", "0", "0", "0", "0", "100", "100", "1", "0", "1",
              "-1", "LED example", str(luminous_flux_lm), "4000", "80", "30"]
@@ -58,8 +58,8 @@ def samples() -> dict[str, bytes]:
         "DEMO_02_SpotPodobny_IES.ies": make_ies("Spot 24°", "narrow_similar"),
         "DEMO_03_Downlight_IES.ies": make_ies("Downlight 47°", "wide"),
         "DEMO_04_Batwing_IES.ies": make_ies("Panel batwing", "batwing"),
-        "DEMO_05_Owal_IES.ies": make_ies("Rozsył owalny", "oval"),
-        "DEMO_06_Asymetria_IES.ies": make_ies("Rozsył asymetryczny", "asymmetric"),
-        "DEMO_07_LDT_Spot.ldt": make_ldt("Spot wersja LDT", "narrow"),
-        "DEMO_08_LDT_Wide.ldt": make_ldt("Downlight wersja LDT", "wide"),
+        "DEMO_05_Oval_IES.ies": make_ies("Oval distribution", "oval"),
+        "DEMO_06_Asymmetry_IES.ies": make_ies("Asymmetric distribution", "asymmetric"),
+        "DEMO_07_LDT_Spot.ldt": make_ldt("LDT spot version", "narrow"),
+        "DEMO_08_LDT_Wide.ldt": make_ldt("LDT downlight version", "wide"),
     }

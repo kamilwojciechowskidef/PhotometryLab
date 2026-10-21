@@ -6,7 +6,7 @@ from photolab.demo import make_ies, make_ldt
 from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, sample, shape_matrix)
 from photolab.models import Photometry
-from photolab.quality import assess_quality
+from photolab.quality import assess_quality, rejected_file_report
 
 
 def read_ies(kind="narrow"):
@@ -14,7 +14,7 @@ def read_ies(kind="narrow"):
 
 
 def make_ldt_with_c_symmetry(isym, c_angles, gamma_angles, intensities):
-    """Minimalny LDT: kolejne wiersze intensywności są zapisane przez parser."""
+    """Minimal LDT: consecutive intensity rows are read by the parser."""
     lines = ["TEST", "1", str(isym), str(len(c_angles)), "0", str(len(gamma_angles)), "0",
              "report", "luminaire", "number", "file", "date",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1", "0", "1",
@@ -66,7 +66,7 @@ def test_ies_invalid_tilt_and_type():
     data = make_ies("Test", "narrow")
     with pytest.raises(PhotometryError, match="TILT=NONE"):
         load_photometry("x.ies", data.replace(b"TILT=NONE", b"TILT=INCLUDE"))
-    with pytest.raises(PhotometryError, match="typ C"):
+    with pytest.raises(PhotometryError, match="Type C"):
         load_photometry("x.ies", data.replace(b"19 37 1 2", b"19 37 2 2"))
 
 
@@ -81,7 +81,7 @@ def test_broken_data_rejected():
 
 def test_no_extrapolation():
     item = read_ies("narrow")
-    with pytest.raises(ValueError, match="ekstrapolujemy"):
+    with pytest.raises(ValueError, match="not extrapolated"):
         sample(item, C_GRID, np.array([-5, 0, 90]))
 
 
@@ -102,7 +102,7 @@ def test_isym_quadrant_and_plane90():
 
 
 def test_ldt_isym_plane90_preserves_descending_file_order():
-    # EULUMDAT Isym=3 zapisuje płaszczyzny w kolejności C=270° ... 90°.
+    # EULUMDAT Isym=3 stores planes in the C=270° ... 90° order.
     data = make_ldt_with_c_symmetry(
         3, [0, 90, 180, 270], [0, 90], [[270, 27], [180, 18], [90, 9]],
     )
@@ -121,7 +121,11 @@ def test_ldt_isym_plane90_preserves_descending_file_order():
 )
 def test_ldt_symmetry_rejects_missing_boundary_c_plane(isym, c_angles, intensities):
     data = make_ldt_with_c_symmetry(isym, c_angles, [0, 90], intensities)
+<<<<<<< HEAD
     with pytest.raises(PhotometryError, match="niepełny zakres kątów C"):
+=======
+    with pytest.raises(PhotometryError, match="incomplete C-angle range"):
+>>>>>>> b3d1b2ccb8f4648b1a37a744e3c7d54e1edff906
         load_photometry("incomplete.ldt", data)
 
 
@@ -162,7 +166,7 @@ def test_no_data_in_downward_hemisphere_excluded():
     up = Photometry('up', 'test', 'a', 'b', np.array([0.]),
                     np.array([90., 180.]), np.array([[10., 50.]]),
                     'radial', 'cd', 1).validate()
-    with pytest.raises(ValueError, match='ekstrapolujemy'):
+    with pytest.raises(ValueError, match='not extrapolated'):
         shape_matrix(up)
 
 
@@ -173,8 +177,16 @@ def test_quality_report_distinguishes_comparison_and_absolute_flux_readiness():
     report = assess_quality(relative)
     assert report.comparison_ready
     assert not report.downward_flux_ready
-    assert report.status == "gotowy z ograniczeniami"
-    assert any("przeliczenia" in issue for issue in report.issues)
+    assert report.status == "valid with limitations"
+    assert any("conversion" in issue for issue in report.issues)
+
+
+def test_quality_report_marks_complete_absolute_photometry_as_correct():
+    report = assess_quality(read_ies("narrow"))
+    assert report.status == "valid"
+    assert report.comparison_ready
+    assert report.downward_flux_ready
+    assert not report.issues
 
 
 def test_quality_report_marks_missing_gamma_coverage_as_not_comparable():
@@ -184,5 +196,20 @@ def test_quality_report_marks_missing_gamma_coverage_as_not_comparable():
     report = assess_quality(incomplete)
     assert not report.comparison_ready
     assert not report.downward_flux_ready
-    assert report.status == "niegotowy do porównania"
-    assert any("gamma" in issue for issue in report.issues)
+    assert report.status == "incomplete"
+    assert any("gamma" in issue.lower() for issue in report.issues)
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_status"),
+    [
+        ("Supported formats are limited to .ies and .ldt.", "unsupported"),
+        ("IES: too few data values (need 10, found 2).", "incomplete"),
+        ("Invalid numeric value: 'abc'.", "damaged"),
+    ],
+)
+def test_rejected_file_report_classifies_parser_errors(message, expected_status):
+    report = rejected_file_report("file.test", message)
+    assert report.status == expected_status
+    assert not report.comparison_ready
+    assert report.issues == (message,)
