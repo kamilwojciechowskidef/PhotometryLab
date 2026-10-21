@@ -6,12 +6,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from dataclasses import replace
 
 from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, find_similar,
                                shape_matrix)
 from photolab.demo import samples
 from photolab.database import DatabaseError, database_url, register_file_import
+from photolab.database import list_catalogue, load_stored_photometry
+from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
 
@@ -59,6 +62,48 @@ for name, content in payload.items():
         quality_reports.append(assess_quality(item))
     except PhotometryError as error:
         quality_reports.append(rejected_file_report(name, str(error)))
+
+with st.sidebar:
+    browse_catalogue = st.checkbox("Browse saved catalogue", value=False, key="browse_catalogue")
+    if browse_catalogue:
+        manufacturer_filter = st.text_input("Manufacturer contains")
+        model_filter = st.text_input("Model contains")
+        page = st.number_input("Catalogue page", min_value=1, value=1, step=1)
+        try:
+            catalogue_url = database_url()
+            catalogue_rows = list_catalogue(catalogue_url, manufacturer=manufacturer_filter,
+                                           model=model_filter, offset=(int(page) - 1) * 50)
+            if not catalogue_rows:
+                st.info("No saved photometry on this page. Earlier metadata-only imports must be uploaded and saved again.")
+            else:
+                st.dataframe(pd.DataFrame(catalogue_rows).drop(columns=['sha256']), hide_index=True)
+                choices = {row['file_id']: row for row in catalogue_rows}
+                selected_ids = st.multiselect(
+                    "Add saved luminaires to comparison", list(choices),
+                    format_func=lambda file_id: f"#{file_id} · {choices[file_id]['manufacturer']} · {choices[file_id]['model']} · {choices[file_id]['filename']}",
+                )
+                st.caption("Selection applies to the current page and filters. Up to 50 records per page.")
+                loaded_hashes = {identify_file(content).sha256 for content in payload.values()}
+                used_names = set(payload)
+                for file_id in selected_ids:
+                    row = choices[file_id]
+                    if row['sha256'] in loaded_hashes:
+                        st.info(f"#{file_id}: identical file already in the comparison set.")
+                        continue
+                    saved = load_stored_photometry(catalogue_url, file_id)
+                    if saved is None:
+                        st.warning(f"#{file_id}: photometry is no longer available.")
+                        continue
+                    name = f"[DB {file_id}] {saved.filename}"
+                    while name in used_names:
+                        name = "[DB] " + name
+                    used_names.add(name)
+                    saved = replace(saved, filename=name)
+                    parsed.append(saved)
+                    quality_reports.append(assess_quality(saved))
+                    loaded_hashes.add(row['sha256'])
+        except DatabaseError as error:
+            st.error(str(error))
 
 eligible = []
 excluded = []

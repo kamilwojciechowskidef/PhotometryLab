@@ -71,6 +71,12 @@ uzupełniane przed zapisem.
 
 ## Przechowywanie danych
 
+Przeglądarka katalogu pobiera metadane stronami po 50 rekordów i filtruje je
+na serwerze. Macierze są pobierane tylko dla wybranych pozycji. Wybór obejmuje
+bieżącą stronę i filtry. Zapisane oprawy są dołączane do lokalnego porównania,
+z deduplikacją względem SHA-256 plików w bieżącym zestawie. Nie są ponownie
+zapisywane przy użyciu przycisku zapisu przesłanych plików.
+
 Migracja `003` wprowadza tabelę `photometries` z jednym rekordem na `file_id`.
 Wersjonowany dokument JSONB (wersja 1) zachowuje wszystkie pola modelu,
 w tym natywną siatkę, macierz i jednostki. Nie zapisujemy znormalizowanej

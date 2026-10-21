@@ -4,8 +4,53 @@ This is a mock smoke test; it does not replace testing in a real browser.
 """
 import runpy
 import sys
+import pytest
 from contextlib import nullcontext
 from types import ModuleType, SimpleNamespace
+
+
+@pytest.mark.parametrize('unavailable', [False, True])
+def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
+    from photolab.demo import make_ies
+    from photolab.parsers import load_photometry
+    import photolab.database as database
+    stub = ModuleType('streamlit')
+    noop = lambda *a, **k: None
+    errors, tables = [], []
+    for method in ['set_page_config', 'title', 'caption', 'write', 'header', 'divider',
+                   'warning', 'info', 'success', 'download_button', 'plotly_chart', 'subheader']:
+        setattr(stub, method, noop)
+    stub.error = errors.append
+    stub.dataframe = lambda data, **k: tables.append(data)
+    stub.sidebar = nullcontext()
+    stub.file_uploader = lambda *a, **k: []
+    stub.checkbox = lambda *a, **k: k.get('key') == 'browse_catalogue'
+    stub.button = lambda *a, **k: False
+    stub.text_input = lambda *a, **k: ''
+    stub.number_input = lambda *a, **k: 1
+    stub.multiselect = lambda label, options, **k: options
+    stub.expander = lambda *a, **k: nullcontext()
+    stub.tabs = lambda labels: [nullcontext() for _ in labels]
+    stub.columns = lambda count: [SimpleNamespace(metric=noop) for _ in range(count)]
+    stub.selectbox = lambda label, options, **k: list(options)[0]
+    stub.slider = lambda *a, **k: k['value']
+    monkeypatch.setitem(sys.modules, 'streamlit', stub)
+    monkeypatch.setattr(database, 'database_url', lambda: 'unused')
+    def listing(*a, **k):
+        if unavailable:
+            raise database.DatabaseError('Catalogue unavailable')
+        return [dict(file_id=i, filename='same.ies', manufacturer='Example', model='Lamp',
+                     format='IES', sha256=str(i) * 64) for i in (1, 2)]
+    monkeypatch.setattr(database, 'list_catalogue', listing)
+    monkeypatch.setattr(database, 'load_stored_photometry',
+                        lambda *a: load_photometry('same.ies', make_ies('Test', 'oval')))
+    runpy.run_path('app.py', run_name='__main__')
+    if unavailable:
+        assert errors == ['Catalogue unavailable']
+    else:
+        ranking = next(table for table in tables if 'Candidate' in table.columns)
+        assert ranking['Candidate'].tolist() == ['[DB 2] same.ies']
+        assert not errors
 
 
 def test_app_demo_flow(monkeypatch):
@@ -16,7 +61,7 @@ def test_app_demo_flow(monkeypatch):
                    'warning', 'info', 'error', 'success', 'dataframe', 'download_button', 'plotly_chart', 'subheader']:
         setattr(stub, method, noop)
     stub.file_uploader = lambda *a, **k: []
-    stub.checkbox = lambda *a, **k: True
+    stub.checkbox = lambda *a, **k: False if k.get('key') == 'browse_catalogue' else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
     stub.tabs = lambda labels: [nullcontext() for _ in labels]

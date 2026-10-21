@@ -8,6 +8,7 @@ from photolab.database import load_stored_photometry
 from photolab.demo import make_ies
 from photolab.parsers import load_photometry
 from photolab.storage import photometry_to_data
+from photolab.database import list_catalogue
 
 
 class FakeCursor:
@@ -26,6 +27,25 @@ class FakeCursor:
 
     def fetchone(self):
         return next(self.responses)
+
+    def fetchall(self):
+        return list(self.responses)
+
+
+def test_catalogue_filters_are_parameters_and_results_are_bounded(monkeypatch):
+    cursor = FakeCursor([(5, 'same.ies', 'Example', 'Lamp', 'IES', 'a' * 64)])
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda *a, **k: FakeConnection(cursor))
+    rows = list_catalogue('unused', manufacturer="O'Reilly", model='100%', offset=50)
+    assert rows[0]['file_id'] == 5
+    sql, params = cursor.calls[0]
+    assert params == ("O'Reilly", '100%', 50, 50)
+    assert "O'Reilly" not in sql
+    assert 'LIMIT %s OFFSET %s' in sql
+
+
+def test_catalogue_rejects_unbounded_request():
+    with pytest.raises(ValueError):
+        list_catalogue('unused', limit=10000)
 
 
 class FakeConnection:
