@@ -25,13 +25,13 @@ doborem równoważnego zamiennika oprawy.
 
 - Serwer PostgreSQL jest dostępny przez `DATABASE_URL`.
 - Połączenie wskazuje bazę `postgres` i użytkownika `postgres`.
-- W bazie nie ma jeszcze tabel aplikacji poza tabelami systemowymi.
+- Migracja `001` została wykonana: istnieją tabele `import_batches`,
+  `photometry_files`, `file_aliases` i rejestr migracji.
 
 ### Czego jeszcze nie ma
 
-- modułu połączenia z bazą w `photolab/`;
-- migracji SQL i tabel katalogu;
-- trwałego identyfikatora SHA-256 oraz deduplikacji;
+- wykonanej migracji SQL i utworzonych tabel katalogu;
+- zapisu identyfikatora SHA-256 i deduplikacji w trakcie importu;
 - zapisu zaimportowanych plików, metadanych i cech do PostgreSQL;
 - importu wsadowego katalogu/ZIP;
 - trwałej historii analiz lub wyników porównań.
@@ -107,11 +107,15 @@ musi zostać obliczony dokładną, wersjonowaną metryką PhotometryLab.
    - `photolab/database.py`, jawny health check, obsługa błędów bez ujawniania
      adresu lub hasła bazy;
    - pierwsza migracja SQL tworząca pusty schemat;
-   - test integracyjny uruchamiany tylko przy jawnie skonfigurowanej bazie
-     testowej.
+   - testy jednostkowe konfiguracji i kolejności migracji.
+
+   Kod modułu i migracja są przygotowane w repozytorium. Ich wykonanie jest
+   celowe i ręczne: `python -m photolab.database`. To polecenie może utworzyć
+   wyłącznie schemat `photolab` oraz jego tabele w bazie wskazanej przez
+   `DATABASE_URL`.
 
 2. `feature/file-identifiers`
-   - SHA-256 z oryginalnych bajtów;
+   - SHA-256 z oryginalnych bajtów — zaimplementowany przez `identify_file()`;
    - wykrywanie duplikatów oraz aliasów w jednym imporcie;
    - bez automatycznego usuwania plików.
 
