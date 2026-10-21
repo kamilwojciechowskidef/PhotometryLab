@@ -123,6 +123,9 @@ musi zostać obliczony dokładną, wersjonowaną metryką PhotometryLab.
    - transakcyjny zapis pojedynczego pliku, jego SHA-256, aliasu i raportu jakości;
    - rejestr plików odrzuconych bez fałszowania ich danych.
 
+   Zapis jest dostępny ręcznie w interfejsie Streamlit wyłącznie dla plików
+   przesłanych przez użytkownika. Pliki demonstracyjne nie są zapisywane.
+
 4. `feature/catalogue-search`
    - katalog PostgreSQL, filtry metadanych i porównanie referencji z
      kandydatami istniejącym algorytmem.
