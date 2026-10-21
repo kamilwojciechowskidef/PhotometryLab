@@ -108,10 +108,15 @@ def test_import_persists_photometry_for_new_and_existing_files(monkeypatch, dupl
     )
     assert result.duplicate == duplicate
     assert connection.committed
-    statement, params = cursor.calls[-1]
+    statement, params = cursor.calls[-2]
     assert 'ON CONFLICT (file_id) DO NOTHING' in statement
     assert params[0] == 20
     assert params[2].obj == photometry_to_data(item)
+    feature_statement, feature_params = cursor.calls[-1]
+    assert 'INSERT INTO photolab.feature_sets' in feature_statement
+    assert feature_params[0] == 20
+    assert feature_params[2] == 684
+    assert len(feature_params[3]) == 684
 
 
 def test_load_stored_photometry(monkeypatch):

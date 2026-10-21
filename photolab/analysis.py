@@ -68,6 +68,11 @@ def _angular_weights() -> np.ndarray:
     return w / w.sum()
 
 
+def weighted_shape_vector(item: Photometry) -> np.ndarray:
+    """Flattened shape vector weighted by the same solid angle as cosine/RMSE."""
+    return shape_matrix(item) * np.sqrt(_angular_weights())
+
+
 @dataclass
 class Similarity:
     filename: str
@@ -127,9 +132,7 @@ def embedding(items: Sequence[Photometry], clusters: int = 3) -> tuple[np.ndarra
     from sklearn.decomposition import PCA
     from sklearn.cluster import KMeans
     from sklearn.ensemble import IsolationForest
-    x = np.array([shape_matrix(item).flatten() for item in items])
-    # Weight the angular features by actual solid-angle contribution.
-    x *= np.sqrt(_angular_weights().flatten())[None, :]
+    x = np.array([weighted_shape_vector(item).flatten() for item in items])
     pca = PCA(n_components=2, random_state=42)
     xy = pca.fit_transform(x)
     k = min(max(2, clusters), len(items)-1)

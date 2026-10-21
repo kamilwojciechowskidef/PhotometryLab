@@ -112,6 +112,13 @@ powinien tworzyć drugiej fotometrii, ale może mieć wiele aliasów i importów
 
 ## Wydajność i skala
 
+Docelowy katalog 1,5–3 mln plików wymaga indeksu cech, nie wczytywania całej
+bazy do Streamlit. Migracja `005` zapisuje wersjonowane, ważone wektory kształtu
+i osiem indeksowanych koszyków LSH. Indeks służy wyłącznie do ograniczenia
+puli kandydatów; końcowy ranking nadal liczy istniejący algorytm RMSE/cosinus.
+Szczegóły wymiaru, backfillu, ograniczeń recall i pojemności opisuje
+[FEATURE_INDEX.md](FEATURE_INDEX.md).
+
 Na początku wyszukiwanie przebiega przez filtr metadanych w SQL, a dokładny
 ranking jest liczony istniejącymi funkcjami NumPy. To zapewnia zgodność z
 zdefiniowanymi metrykami RMSE i cosinusową.

@@ -114,7 +114,7 @@ def test_app_saves_uploaded_file_to_catalogue(monkeypatch):
         SimpleNamespace(name='fixture.ies', getvalue=lambda: make_ies('Fixture', 'narrow')),
     ]
     stub.checkbox = lambda *a, **k: False
-    stub.button = lambda *a, **k: True
+    stub.button = lambda label, **k: label == 'Save uploaded files to PostgreSQL'
     stub.expander = lambda *a, **k: nullcontext()
     stub.tabs = lambda labels: [nullcontext() for _ in labels]
     stub.columns = lambda count: [SimpleNamespace(metric=noop) for _ in range(count)]
@@ -134,3 +134,37 @@ def test_app_saves_uploaded_file_to_catalogue(monkeypatch):
     assert registered[0]['source_description'] == 'Streamlit upload'
     assert registered[0]['photometry'].filename == 'fixture.ies'
     assert notices == ['Added 1 new file(s) to the catalogue.']
+
+
+def test_app_searches_indexed_catalogue_with_one_uploaded_reference(monkeypatch):
+    from photolab.demo import make_ies
+    import photolab.indexing as indexing
+
+    stub = ModuleType('streamlit')
+    stub.sidebar = nullcontext()
+    calls = []
+    noop = lambda *args, **kwargs: None
+    for method in ['set_page_config', 'title', 'caption', 'write', 'header', 'divider',
+                   'warning', 'error', 'success', 'dataframe', 'download_button', 'plotly_chart', 'subheader']:
+        setattr(stub, method, noop)
+    stub.info = lambda message: calls.append(('info', message))
+    stub.file_uploader = lambda *a, **k: [
+        SimpleNamespace(name='reference.ies', getvalue=lambda: make_ies('Reference', 'narrow')),
+    ]
+    stub.checkbox = lambda *a, **k: False
+    stub.button = lambda label, **k: label == 'Search indexed catalogue'
+    stub.expander = lambda *a, **k: nullcontext()
+    stub.tabs = lambda labels: [nullcontext() for _ in labels]
+    stub.columns = lambda count: [SimpleNamespace(metric=noop) for _ in range(count)]
+    stub.metric = noop
+    stub.selectbox = lambda label, options, **k: list(options)[0]
+    stub.slider = lambda *args, **kwargs: kwargs['value']
+    monkeypatch.setitem(sys.modules, 'streamlit', stub)
+    monkeypatch.setattr(indexing, 'rank_catalogue',
+                        lambda *args, **kwargs: calls.append(('search', args[1].filename)) or
+                        SimpleNamespace(candidates_examined=0, results=[]))
+
+    runpy.run_path('app.py', run_name='__main__')
+
+    assert ('search', 'reference.ies') in calls
+    assert any('No indexed candidates' in message for kind, message in calls if kind == 'info')

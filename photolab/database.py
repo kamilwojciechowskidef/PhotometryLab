@@ -15,6 +15,7 @@ from .quality import QualityReport
 from .models import Photometry
 from .storage import photometry_to_data, photometry_from_data
 from .artifacts import save_source
+from .features import FEATURE_DIMENSIONS, FEATURE_VERSION, FeatureSet, build_feature
 
 
 class DatabaseError(RuntimeError):
@@ -39,6 +40,25 @@ class StoredImport:
     alias_id: int
     identifier: FileIdentifier
     duplicate: bool
+
+
+def store_feature(cursor, file_id: int, feature: FeatureSet) -> None:
+    """Write one immutable algorithm version; an existing version is preserved."""
+    cursor.execute(
+        """
+        INSERT INTO photolab.feature_sets (
+            file_id, algorithm_version, dimensions, vector, l2_norm,
+            canonical_rotation, feature_digest,
+            bucket_0, bucket_1, bucket_2, bucket_3,
+            bucket_4, bucket_5, bucket_6, bucket_7
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s
+        ) ON CONFLICT (file_id, algorithm_version) DO NOTHING
+        """,
+        (file_id, FEATURE_VERSION, FEATURE_DIMENSIONS, feature.vector.tolist(), feature.l2_norm,
+         feature.canonical_rotation, feature.digest, *feature.buckets),
+    )
 
 
 def database_url(env_path: Path | str = ".env") -> str:
@@ -156,6 +176,7 @@ def register_file_import(
     photometry_data = photometry_to_data(photometry) if photometry is not None else None
     if photometry is not None and photometry.format != format_name:
         raise ValueError("Photometry format does not match the file format.")
+    feature = build_feature(photometry) if photometry is not None and quality_report.comparison_ready else None
     identifier = identify_file(content)
     if source_root is not None:
         private_artifact_path = save_source(source_root, content)
@@ -233,6 +254,8 @@ def register_file_import(
                            ON CONFLICT (file_id) DO NOTHING""",
                         (file_id, application_version, Jsonb(photometry_data)),
                     )
+                if feature is not None:
+                    store_feature(cursor, file_id, feature)
             connection.commit()
     except psycopg.Error as error:
         raise DatabaseError("PostgreSQL file registration failed.") from error
@@ -307,6 +330,32 @@ def load_stored_photometry(url: str, file_id: int) -> Photometry | None:
         return photometry_from_data(row[1])
     except (TypeError, ValueError, KeyError, IndexError):
         raise DatabaseError("Stored photometry is invalid.") from None
+
+
+def load_stored_photometries(url: str, file_ids: list[int]) -> dict[int, Photometry]:
+    """Load a bounded candidate set in one query, preserving no implicit order."""
+    unique_ids = list(dict.fromkeys(file_ids))
+    if not unique_ids:
+        return {}
+    if len(unique_ids) > 20_000:
+        raise ValueError("Candidate set exceeds the 20,000 record safety limit.")
+    try:
+        with psycopg.connect(url, connect_timeout=10) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT file_id, data FROM photolab.photometries WHERE file_id = ANY(%s)",
+                    (unique_ids,),
+                )
+                rows = cursor.fetchall()
+    except psycopg.Error:
+        raise DatabaseError("PostgreSQL candidate read failed.") from None
+    loaded: dict[int, Photometry] = {}
+    for file_id, data in rows:
+        try:
+            loaded[file_id] = photometry_from_data(data)
+        except (TypeError, ValueError, KeyError, IndexError):
+            continue
+    return loaded
 
 
 if __name__ == "__main__":

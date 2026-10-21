@@ -17,6 +17,7 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
 from photolab.demo import samples
 from photolab.database import DatabaseError, database_url, register_file_import
 from photolab.database import list_catalogue, load_stored_photometry
+from photolab.indexing import rank_catalogue
 from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
@@ -133,11 +134,35 @@ st.warning("**Interpretation:** The ranking compares primarily the **distributio
 t1, t2, t3 = st.tabs(["Comparison and ranking", "Catalogue and data quality", "ML exploration (experimental)"])
 
 with t1:
-    if len(eligible) < 2:
-        st.info("Ranking requires at least two files with γ = 0–90° data.")
-    else:
+    if eligible:
         selected = st.selectbox("Reference luminaire", [i.filename for i in eligible], key="ref_file")
         ref = next(i for i in eligible if i.filename == selected)
+        if st.button("Search indexed catalogue", key="search_indexed_catalogue"):
+            try:
+                catalogue_search = rank_catalogue(database_url(), ref, allow_rotation=allow_rotation)
+                indexed_df = pd.DataFrame([{
+                    "Catalogue ID": file_id,
+                    "Candidate": score.filename,
+                    "Cosine (1 = identical)": round(score.cosine, 5),
+                    "RMSE (0 = identical)": round(score.rmse, 5),
+                    "Rotation [°]": score.rotation_deg,
+                } for file_id, score in catalogue_search.results])
+                if indexed_df.empty:
+                    st.info("No indexed candidates were found. Build features for the saved catalogue first.")
+                else:
+                    st.subheader("Indexed catalogue candidates")
+                    st.dataframe(indexed_df, use_container_width=True, hide_index=True)
+                    st.download_button("Download indexed catalogue CSV", indexed_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
+                                       file_name="catalogue_ranking.csv", mime="text/csv")
+                    st.caption(
+                        f"Exact metrics were calculated for {catalogue_search.candidates_examined} candidates "
+                        "retrieved from the feature index. This is a candidate search, not an exhaustive scan of the full catalogue."
+                    )
+            except (DatabaseError, ValueError) as error:
+                st.error(str(error))
+    if len(eligible) < 2:
+        st.info("Local ranking requires at least two files with γ = 0–90° data. Indexed catalogue search works with one reference file.")
+    else:
         results = find_similar(ref, eligible, allow_rotation)
         result_df = pd.DataFrame([{
             "Rank": no + 1, "Candidate": r.filename,
