@@ -71,10 +71,9 @@ uzupełniane przed zapisem.
 
 ## Przechowywanie danych
 
-Magazyn źródeł jest teraz zaimplementowany: zapis ręczny archiwizuje oryginalne
-bajty i uzupełnia `private_artifact_path`, również przy ponownym imporcie.
-Konfigurację, zachowanie przy awariach oraz kopie zapasowe opisuje
-[SOURCE_STORAGE.md](SOURCE_STORAGE.md). Nie wymaga nowej migracji.
+Magazyn źródeł archiwizuje oryginalne bajty i uzupełnia `private_artifact_path`,
+również przy ponownym imporcie. Konfigurację, zachowanie przy awariach i kopie
+zapasowe opisuje [SOURCE_STORAGE.md](SOURCE_STORAGE.md). Nie wymaga nowej migracji.
 
 Przeglądarka katalogu pobiera metadane stronami po 50 rekordów i filtruje je
 na serwerze. Macierze są pobierane tylko dla wybranych pozycji. Wybór obejmuje

@@ -315,3 +315,7 @@ with t3:
 
 st.divider()
 st.caption("PhotometryLab 0.1 · Research use / prototype · Sample data are synthetic only")
+
+if st.checkbox('Open batch import', value=False, key='open_bulk'):
+    from photolab.bulk_ui import render_bulk_import
+    render_bulk_import(APP_VERSION)

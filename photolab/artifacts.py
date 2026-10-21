@@ -1,4 +1,4 @@
-"""Local content-addressed source archive; filenames never determine disk paths."""
+"""Private, content-addressed archive of original file bytes."""
 import os
 from pathlib import Path
 import re
@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ArtifactError(ValueError):
-    """Missing, corrupted or inaccessible source artifact."""
+    """Source is missing, corrupt or inaccessible."""
 
 
 def artifact_root() -> Path:
@@ -47,8 +47,8 @@ def _path(root: Path, digest: str) -> Path:
 
 
 def read_source(root: Path, digest: str, size_bytes: int) -> bytes:
-    target = _path(root, digest)
     try:
+        target = _path(root, digest)
         with target.open('rb') as stream:
             content = stream.read(MAX_SOURCE_BYTES + 1)
     except OSError:
@@ -62,9 +62,9 @@ def save_source(root: Path, content: bytes) -> str:
     identifier = identify_file(content)
     if len(content) > MAX_SOURCE_BYTES:
         raise ArtifactError('Source exceeds the 5 MB limit.')
-    target = _path(root, identifier.sha256)
     temporary = None
     try:
+        target = _path(root, identifier.sha256)
         target.parent.mkdir(parents=True, exist_ok=True)
         target = _path(root, identifier.sha256)
         if not target.exists():
