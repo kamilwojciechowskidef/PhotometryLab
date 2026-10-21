@@ -32,7 +32,7 @@ doborem równoważnego zamiennika oprawy.
 
 - wykonanej migracji SQL i utworzonych tabel katalogu;
 - zapisu identyfikatora SHA-256 i deduplikacji w trakcie importu;
-- zapisu zaimportowanych plików, metadanych i cech do PostgreSQL;
+- zapisu artefaktów źródłowych w prywatnym magazynie oraz metadanych i cech do PostgreSQL;
 - importu wsadowego katalogu/ZIP;
 - trwałej historii analiz lub wyników porównań.
 
@@ -120,7 +120,7 @@ musi zostać obliczony dokładną, wersjonowaną metryką PhotometryLab.
    - bez automatycznego usuwania plików.
 
 3. `feature/catalogue-ingestion`
-   - transakcyjny zapis pojedynczego, sparsowanego pliku i raportu jakości;
+   - transakcyjny zapis pojedynczego pliku, jego SHA-256, aliasu i raportu jakości;
    - rejestr plików odrzuconych bez fałszowania ich danych.
 
 4. `feature/catalogue-search`

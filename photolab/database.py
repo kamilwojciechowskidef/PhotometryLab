@@ -5,9 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 
 import psycopg
+from psycopg.types.json import Jsonb
+
+from .identifiers import FileIdentifier, identify_file
+from .quality import QualityReport
 
 
 class DatabaseError(RuntimeError):
@@ -21,6 +25,17 @@ class DatabaseHealth:
     database: str
     user: str
     server_version: str
+
+
+@dataclass(frozen=True)
+class StoredImport:
+    """Database references created when one uploaded file is registered."""
+
+    file_id: int
+    import_batch_id: int
+    alias_id: int
+    identifier: FileIdentifier
+    duplicate: bool
 
 
 def database_url(env_path: Path | str = ".env") -> str:
@@ -106,6 +121,106 @@ def apply_migrations(url: str, migrations: Iterable[Path]) -> list[str]:
     except (OSError, psycopg.Error) as error:
         raise DatabaseError("PostgreSQL migration failed.") from error
     return applied
+
+
+def register_file_import(
+    url: str,
+    *,
+    original_filename: str,
+    content: bytes,
+    format_name: str | None,
+    quality_report: QualityReport,
+    application_version: str,
+    source_description: str | None = None,
+    private_artifact_path: str | None = None,
+    provenance: Mapping[str, object] | None = None,
+) -> StoredImport:
+    """Register one imported file and its alias in a single database transaction.
+
+    The function stores metadata only. The original bytes remain in the private
+    artifact store; ``private_artifact_path`` may point to that store once it is
+    implemented. An existing SHA-256 record is retained and receives a new alias
+    for this import, without deleting or overwriting prior provenance.
+    """
+    if not original_filename.strip():
+        raise ValueError("The original filename must not be blank.")
+    if not application_version.strip():
+        raise ValueError("The application version must not be blank.")
+
+    identifier = identify_file(content)
+    report_payload = {
+        "status": quality_report.status,
+        "comparison_ready": quality_report.comparison_ready,
+        "downward_flux_ready": quality_report.downward_flux_ready,
+        "issues": list(quality_report.issues),
+    }
+    try:
+        with psycopg.connect(url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO photolab.import_batches (source_description, application_version)
+                    VALUES (%s, %s)
+                    RETURNING id
+                    """,
+                    (source_description, application_version),
+                )
+                import_batch_id = cursor.fetchone()[0]
+
+                cursor.execute(
+                    """
+                    INSERT INTO photolab.photometry_files
+                        (sha256, size_bytes, format, quality_status, quality_report,
+                         private_artifact_path, provenance)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (sha256) DO NOTHING
+                    RETURNING id
+                    """,
+                    (
+                        identifier.sha256,
+                        identifier.size_bytes,
+                        format_name,
+                        quality_report.status,
+                        Jsonb(report_payload),
+                        private_artifact_path,
+                        Jsonb(dict(provenance or {})),
+                    ),
+                )
+                inserted = cursor.fetchone()
+                duplicate = inserted is None
+                if duplicate:
+                    cursor.execute(
+                        "SELECT id FROM photolab.photometry_files WHERE sha256 = %s",
+                        (identifier.sha256,),
+                    )
+                    existing = cursor.fetchone()
+                    if existing is None:
+                        raise DatabaseError("The duplicate file record could not be retrieved.")
+                    file_id = existing[0]
+                else:
+                    file_id = inserted[0]
+
+                cursor.execute(
+                    """
+                    INSERT INTO photolab.file_aliases
+                        (file_id, import_batch_id, original_filename)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                    """,
+                    (file_id, import_batch_id, original_filename),
+                )
+                alias_id = cursor.fetchone()[0]
+            connection.commit()
+    except psycopg.Error as error:
+        raise DatabaseError("PostgreSQL file registration failed.") from error
+
+    return StoredImport(
+        file_id=file_id,
+        import_batch_id=import_batch_id,
+        alias_id=alias_id,
+        identifier=identifier,
+        duplicate=duplicate,
+    )
 
 
 if __name__ == "__main__":
