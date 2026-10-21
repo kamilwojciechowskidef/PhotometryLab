@@ -22,6 +22,12 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Wersjonowany indeks cech kształtu, przebudowa indeksu w małych
+  transakcjach oraz kandydaci LSH z dokładnym rankingiem końcowym (migracja `005`).
+- [ ] Benchmark na reprezentatywnej kopii bazy dla 1,5–3 mln plików:
+  czas importu, rozmiar tabel i indeksów, czas kandydatów, recall względem
+  pełnego rankingu na oznaczonej próbce oraz obciążenie PostgreSQL.
+
 - [x] Kod importu wielu plików/ZIP, wspólna partia, limity i historia raportów
   (migracja `004`); wymaga weryfikacji ręcznej w środowisku użytkownika.
 
