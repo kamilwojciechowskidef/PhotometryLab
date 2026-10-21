@@ -22,6 +22,9 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Przeglądarka PostgreSQL: filtry producenta/modelu, strony po 50 rekordów,
+  wybór zapisanej fotometrii do porównania oraz rozróżnienie nazw w interfejsie.
+
 - [x] Kod zapisu i odczytu natywnej fotometrii w PostgreSQL (migracja `003`),
   powiązanie z SHA-256 oraz integracja z ręcznym zapisem w Streamlit.
 - [ ] Weryfikacja zapisu i odczytu fotometrii na rzeczywistej bazie testowej.

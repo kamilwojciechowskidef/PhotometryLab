@@ -104,6 +104,14 @@ examples/              Exported IES/LDT examples
 
 ## Tests
 
+Przeglądarka katalogu: zaznacz `Browse saved catalogue` w panelu bocznym.
+Filtry producenta i modelu wyszukują fragment tekstu bez rozróżniania wielkości
+liter. Strony zawierają do 50 pozycji z zapisaną fotometrią. Wybór pozycji
+dołącza je do istniejących wykresów i rankingu; wybór dotyczy bieżącej strony
+i filtrów. Plik obecny w zestawie jest rozpoznawany po SHA-256.
+Wczytane pozycje otrzymują oznaczenie `[DB id]`, aby rozróżnić jednakowe nazwy.
+Przeglądanie wymaga migracji do `003`; nie ma nowej migracji dla przeglądarki.
+
 Trwała fotometria: migracja `003` dodaje tabelę `photolab.photometries`.
 Uruchom `python -m photolab.database` przed zapisem z interfejsu.
 Przycisk zapisu zachowuje teraz również natywne kąty, macierz, jednostki

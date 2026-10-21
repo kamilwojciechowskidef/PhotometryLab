@@ -236,6 +236,30 @@ def register_file_import(
     )
 
 
+def list_catalogue(url: str, *, manufacturer: str = "", model: str = "",
+                   limit: int = 50, offset: int = 0) -> list[dict]:
+    """Read a bounded page of native photometry metadata, without its matrices."""
+    if not 1 <= limit <= 100 or offset < 0:
+        raise ValueError("Invalid catalogue page bounds.")
+    try:
+        with psycopg.connect(url, connect_timeout=5) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT p.file_id, p.data->>'filename', p.data->>'manufacturer',
+                              p.data->>'luminaire', p.data->>'format', f.sha256
+                       FROM photolab.photometries p
+                       JOIN photolab.photometry_files f ON f.id = p.file_id
+                       WHERE strpos(lower(coalesce(p.data->>'manufacturer', '')), lower(%s)) > 0
+                         AND strpos(lower(coalesce(p.data->>'luminaire', '')), lower(%s)) > 0
+                       ORDER BY p.file_id LIMIT %s OFFSET %s""",
+                    (manufacturer.strip(), model.strip(), limit, offset),
+                )
+                return [dict(zip(('file_id', 'filename', 'manufacturer', 'model', 'format', 'sha256'), row))
+                        for row in cursor.fetchall()]
+    except psycopg.Error:
+        raise DatabaseError("PostgreSQL catalogue read failed. Check the connection and migrations.") from None
+
+
 def load_stored_photometry(url: str, file_id: int) -> Photometry | None:
     """Return validated native photometry, or None for a metadata-only record."""
     try:
