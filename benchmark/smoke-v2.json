@@ -1,0 +1,28 @@
+{
+  "feature_version": "shape-v2-c36-g19-maxnorm-weighted-canonical-centered-lsh96",
+  "synthetic_only": true,
+  "corpus_size": 100,
+  "query_count": 2,
+  "top_k": 5,
+  "seed": 20261021,
+  "feature_generation_seconds": 0.041115599997283425,
+  "feature_generation_per_second": 2432.166866265047,
+  "raw_vector_bytes": 273600,
+  "raw_bucket_bytes": 1600,
+  "queries": [
+    {
+      "query_number": 1,
+      "candidates": 40,
+      "recall_at_k": 1.0,
+      "exact_ranking_seconds": 0.02245069999844418,
+      "candidate_filter_seconds": 0.0016118000057758763
+    },
+    {
+      "query_number": 2,
+      "candidates": 59,
+      "recall_at_k": 1.0,
+      "exact_ranking_seconds": 0.011571299997740425,
+      "candidate_filter_seconds": 0.0015255999933287967
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "feature_version": "shape-v2-c36-g19-maxnorm-weighted-canonical-centered-lsh96",
+  "stored_files": 0,
+  "stored_photometries": 0,
+  "current_features": 0,
+  "relations": [
+    {
+      "name": "feature_sets",
+      "total_bytes": 81920,
+      "table_bytes": 0,
+      "index_bytes": 73728
+    },
+    {
+      "name": "photometries",
+      "total_bytes": 16384,
+      "table_bytes": 0,
+      "index_bytes": 8192
+    },
+    {
+      "name": "photometry_files",
+      "total_bytes": 24576,
+      "table_bytes": 0,
+      "index_bytes": 16384
+    }
+  ],
+  "candidate_queries": [],
+  "mean_candidate_seconds": null
+}

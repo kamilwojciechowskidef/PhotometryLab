@@ -1,0 +1,129 @@
+{
+  "feature_version": "shape-v2-c36-g19-maxnorm-weighted-canonical-centered-lsh96",
+  "stored_files": 286,
+  "stored_photometries": 276,
+  "current_features": 262,
+  "relations": [
+    {
+      "name": "feature_sets",
+      "total_bytes": 573440,
+      "table_bytes": 221184,
+      "index_bytes": 319488
+    },
+    {
+      "name": "photometries",
+      "total_bytes": 1228800,
+      "table_bytes": 196608,
+      "index_bytes": 16384
+    },
+    {
+      "name": "photometry_files",
+      "total_bytes": 253952,
+      "table_bytes": 147456,
+      "index_bytes": 73728
+    }
+  ],
+  "candidate_queries": [
+    {
+      "file_id": 1,
+      "candidates": 78,
+      "seconds": 0.0032692000022507273
+    },
+    {
+      "file_id": 2,
+      "candidates": 78,
+      "seconds": 0.0010649999967426993
+    },
+    {
+      "file_id": 5,
+      "candidates": 50,
+      "seconds": 0.0007065999998303596
+    },
+    {
+      "file_id": 6,
+      "candidates": 47,
+      "seconds": 0.0006381999992299825
+    },
+    {
+      "file_id": 7,
+      "candidates": 2,
+      "seconds": 0.0008884000017133076
+    },
+    {
+      "file_id": 8,
+      "candidates": 2,
+      "seconds": 0.0008526000019628555
+    },
+    {
+      "file_id": 9,
+      "candidates": 4,
+      "seconds": 0.000828100000944687
+    },
+    {
+      "file_id": 10,
+      "candidates": 4,
+      "seconds": 0.0007798000006005168
+    },
+    {
+      "file_id": 11,
+      "candidates": 49,
+      "seconds": 0.0008162999984051567
+    },
+    {
+      "file_id": 12,
+      "candidates": 49,
+      "seconds": 0.0008629000003566034
+    },
+    {
+      "file_id": 13,
+      "candidates": 47,
+      "seconds": 0.0005829000001540408
+    },
+    {
+      "file_id": 14,
+      "candidates": 47,
+      "seconds": 0.0006852000005892478
+    },
+    {
+      "file_id": 15,
+      "candidates": 15,
+      "seconds": 0.0004616999976860825
+    },
+    {
+      "file_id": 16,
+      "candidates": 5,
+      "seconds": 0.0005491000010806601
+    },
+    {
+      "file_id": 17,
+      "candidates": 48,
+      "seconds": 0.0005827999993925914
+    },
+    {
+      "file_id": 18,
+      "candidates": 50,
+      "seconds": 0.0005855999988853
+    },
+    {
+      "file_id": 19,
+      "candidates": 85,
+      "seconds": 0.0006431000001612119
+    },
+    {
+      "file_id": 20,
+      "candidates": 85,
+      "seconds": 0.0006108999987191055
+    },
+    {
+      "file_id": 21,
+      "candidates": 2,
+      "seconds": 0.0005082999996375293
+    },
+    {
+      "file_id": 22,
+      "candidates": 2,
+      "seconds": 0.00047030000132508576
+    }
+  ],
+  "mean_candidate_seconds": 0.0008193499999833876
+}
