@@ -11,15 +11,34 @@ def render_bulk_import(version):
     st.subheader('Batch import')
     st.caption('Up to 500 entries, 5 MB per file and 100 MB per batch. ZIP files are read without extraction. Each file is committed separately.')
     uploads = st.file_uploader('Batch IES/LDT files', type=['ies', 'ldt'], accept_multiple_files=True, key='batch_files')
-    archive = st.file_uploader('Or one ZIP archive', type=['zip'], key='batch_zip')
+    archives = st.file_uploader('Or multiple ZIP archives', type=['zip'], accept_multiple_files=True, key='batch_zips')
     description = st.text_input('Batch source / provenance', key='batch_description')
     if st.button('Import batch', key='import_batch'):
         try:
-            if uploads and archive:
-                raise ValueError('Choose individual files or one ZIP, not both.')
+            if uploads and archives:
+                raise ValueError('Choose individual files or ZIP archives, not both.')
             if not description.strip():
                 raise ValueError('Describe the source of this batch before importing.')
-            files = prepare_zip(archive.getvalue()) if archive else prepare_files([(u.name, u.getvalue()) for u in uploads or []])
+            if archives:
+                if sum(archive.size for archive in archives) > 100_000_000:
+                    raise ValueError('Browser ZIP uploads exceed 100 MB. Import smaller groups.')
+                summaries = []
+                for number, archive in enumerate(archives, 1):
+                    st.write(f'Archive {number}/{len(archives)}: {archive.name}')
+                    try:
+                        files = prepare_zip(archive.getvalue())
+                        batch_id, rows = import_batch(database_url(), files, artifact_root(),
+                            f'{description.strip()} / {archive.name}', version)
+                        summaries.append(dict(archive=archive.name, batch_id=batch_id,
+                            files=len(rows), errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
+                        del files
+                    except (ValueError, OSError, DatabaseError) as error:
+                        summaries.append(dict(archive=archive.name, error=str(error)))
+                st.dataframe(pd.DataFrame(summaries), hide_index=True)
+                st.download_button('Download archive summary', pd.DataFrame(summaries).to_csv(index=False).encode('utf-8-sig'),
+                                   file_name='archive_summary.csv', mime='text/csv')
+                return
+            files = prepare_files([(u.name, u.getvalue()) for u in uploads or []])
             progress = st.progress(0.0)
             batch_id, rows = import_batch(database_url(), files, artifact_root(), description.strip(), version,
                                          progress=lambda done, total: progress.progress(done / total))

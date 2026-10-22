@@ -1,5 +1,23 @@
 # Import wsadowy
 
+## Wiele ZIP-ów
+
+Uploader ZIP pozwala wybrać wiele archiwów. Łączny rozmiar uploadu jest
+ograniczony do 100 MB; Streamlit przechowuje przesłane archiwa w pamięci.
+Każdy ZIP tworzy osobną partię i zachowuje dotychczasowe limity 500 wpisów
+oraz 100 MB po rozpakowaniu. Podsumowanie archiwów można pobrać jako CSV.
+
+Dla dużego zbioru umieść ZIP-y w jednym lokalnym katalogu i uruchom:
+
+```powershell
+.venv\Scripts\python.exe -m photolab.zip_import C:\dane\archiwa --source "Opis pochodzenia danych"
+```
+
+Polecenie czyta jedno archiwum naraz i nie wymaga uploadu całego zbioru.
+Przetwarza ZIP-y bezpośrednio w podanym katalogu. Błąd archiwum zatrzymuje CLI;
+ukończone partie pozostają zapisane. Automatyczne wznawianie kolejki nie jest
+jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie.
+
 Przed użyciem uruchom `python -m photolab.database` (migracja `004`).
 Po restarcie Streamlit zaznacz `Open batch import` na dole strony.
 Wybierz wiele IES/LDT albo pojedynczy ZIP, opisz pochodzenie zbioru i kliknij
