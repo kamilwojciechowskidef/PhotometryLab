@@ -9,7 +9,7 @@ importu, analizy i dostępu do danych pozostanie w modułach `photolab/`.
 Podobieństwo rozsyłu jest wynikiem analizy kształtu. Nie jest automatycznym
 doborem równoważnego zamiennika oprawy.
 
-## Stan na 2026-10-21
+## Stan na 2026-10-22
 
 ### Co jest zaimplementowane
 
@@ -20,21 +20,25 @@ doborem równoważnego zamiennika oprawy.
 - Wstępny raport jakości dla poprawnie sparsowanych plików: gotowość do
   porównania i niezależnie do obliczenia strumienia dolnego.
 - Zależność `psycopg[binary]` i lokalny `DATABASE_URL` w `.env`.
+- Migracje `001`–`005`, trwała fotometria, import wsadowy, magazyn źródeł oraz
+  wersjonowany indeks cech LSH z dokładnym rankingiem końcowym.
+- Benchmark syntetyczny indeksu i osobna diagnostyka PostgreSQL w trybie tylko
+  do odczytu; oba raportują wyniki lokalnie i nie są walidacją na danych producentów.
 
 ### Co zostało zweryfikowane lokalnie
 
 - Serwer PostgreSQL jest dostępny przez `DATABASE_URL`.
 - Połączenie wskazuje bazę `postgres` i użytkownika `postgres`.
-- Migracja `001` została wykonana: istnieją tabele `import_batches`,
-  `photometry_files`, `file_aliases` i rejestr migracji.
+- Migracje katalogu i indeksu są dostępne w repozytorium; stan konkretnej bazy
+  należy zawsze potwierdzać przez `python -m photolab.database` oraz benchmark
+  read-only, zamiast wnioskować go z kodu.
 
 ### Czego jeszcze nie ma
 
-- wykonanej migracji SQL i utworzonych tabel katalogu;
-- zapisu identyfikatora SHA-256 i deduplikacji w trakcie importu;
-- zapisu artefaktów źródłowych w prywatnym magazynie oraz metadanych i cech do PostgreSQL;
-- importu wsadowego katalogu/ZIP;
-- trwałej historii analiz lub wyników porównań.
+- reprezentatywnego, legalnie pozyskanego zbioru danych producentów do pomiarów;
+- benchmarku importu i indeksów na kopii bazy z docelowymi 1,5–3 mln plików;
+- trwałej historii analiz lub wyników porównań;
+- potwierdzenia recall i wydajności dla rzeczywistych kategorii opraw.
 
 ## Decyzja architektoniczna
 

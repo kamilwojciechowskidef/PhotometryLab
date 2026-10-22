@@ -27,3 +27,18 @@ czas importu i generowania cech, rozmiar tabel `photometries` i `feature_sets`,
 rozmiar ośmiu indeksów B-tree, czas zapytania kandydatów, obciążenie
 dysku/CPU/RAM oraz recall wobec pełnego rankingu na oznaczonej próbce prawdziwych
 danych. Nie uruchamiaj tego testu na produkcyjnym katalogu bez kopii zapasowej.
+
+## Diagnostyka istniejącej bazy PostgreSQL
+
+Polecenie poniżej nie importuje danych, nie uruchamia migracji i otwiera sesję
+PostgreSQL z `default_transaction_read_only=on`. Mierzy liczbę zapisanych
+rekordów, rozmiary tabel i indeksów oraz rzeczywisty czas zapytania kandydatów
+dla maksymalnie 100 istniejących cech bieżącej wersji:
+
+```powershell
+.venv\Scripts\python.exe -m photolab.database_benchmark --samples 20 --max-candidates 10000 --output benchmark\database-20
+```
+
+Brak rekordów wersji indeksu w raporcie oznacza, że wymagany jest backfill
+`photolab.indexing`; nie jest to wynik wydajnościowy. Wyniki pozostają lokalne
+w katalogu `benchmark/`, który Git ignoruje.

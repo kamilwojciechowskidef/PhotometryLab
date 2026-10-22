@@ -30,6 +30,9 @@ pozostają do wykonania.
   Dostępny jest pierwszy benchmark syntetyczny algorytmu indeksu
   (`photolab.benchmark`): zapisuje JSON/CSV, pracuje partiami i nie dotyka
   PostgreSQL. Nie zastępuje on jeszcze pomiaru na reprezentatywnej kopii bazy.
+  Dostępna jest także diagnostyka tylko do odczytu istniejącej bazy
+  (`photolab.database_benchmark`); mierzy rozmiar relacji i zapytania LSH,
+  lecz nie tworzy reprezentatywnego zbioru testowego.
 
 - [x] Kod importu wielu plików/ZIP, wspólna partia, limity i historia raportów
   (migracja `004`); wymaga weryfikacji ręcznej w środowisku użytkownika.
