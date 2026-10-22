@@ -12,6 +12,8 @@ The application has a Polish interface and runs **locally**. It requires no acco
   limity, wspólne partie i historia raportów CSV.
 - [Indeks cech dla dużego katalogu](docs/FEATURE_INDEX.md) — migracja `005`,
   przetwarzanie wsadowe i przybliżone wskazywanie kandydatów.
+- [Benchmark indeksu cech](docs/BENCHMARK.md) — syntetyczny pomiar kosztu
+  obliczeń i recall puli LSH bez zapisu do bazy.
 
 - [Magazyn źródeł i kopie zapasowe](docs/SOURCE_STORAGE.md) — konfiguracja,
   pobieranie oryginałów, integralność i ponowne parsowanie.

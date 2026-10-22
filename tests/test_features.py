@@ -11,7 +11,7 @@ def test_feature_has_documented_dimension_and_stable_digest():
     item = load_photometry("shape.ies", make_ies("Test", "oval"))
     first = build_feature(item)
     second = build_feature(item)
-    assert FEATURE_VERSION.startswith("shape-v1-")
+    assert FEATURE_VERSION.startswith("shape-v2-")
     assert first.vector.shape == (FEATURE_DIMENSIONS,)
     assert first.vector.dtype == np.dtype("<f4")
     assert first.digest == second.digest
@@ -40,3 +40,9 @@ def test_feature_refuses_distribution_without_downward_emission():
                       np.array([0.0, 90.0]), np.zeros((1, 2)), "radial", "cd", 1)
     with pytest.raises(ValueError, match="zero"):
         item.validate()
+
+
+def test_lsh_demo_bands_do_not_have_a_universal_bucket():
+    kinds = ("narrow", "narrow_similar", "wide", "batwing", "oval", "asymmetric")
+    buckets = [build_feature(load_photometry(f"{kind}.ies", make_ies(kind, kind))).buckets for kind in kinds]
+    assert all(len({item[band] for item in buckets}) > 1 for band in range(8))
