@@ -53,7 +53,7 @@ def prepare_files(files: list[tuple[str, bytes]]) -> list[BatchFile]:
     return prepared
 
 
-def prepare_zip(content: bytes) -> list[BatchFile]:
+def prepare_zip(content: bytes, *, allowed_extensions=frozenset({'.ies', '.ldt'})) -> list[BatchFile]:
     """Read ZIP members in memory, never extract paths to disk."""
     if len(content) > MAX_TOTAL_BYTES:
         raise ValueError('ZIP exceeds the 100 MB limit.')
@@ -81,7 +81,7 @@ def prepare_zip(content: bytes) -> list[BatchFile]:
                 if info.file_size > MAX_FILE_BYTES:
                     prepared.append(BatchFile(info.filename, None, 'File exceeds the 5 MB limit.'))
                     continue
-                if PurePosixPath(info.filename).suffix.lower() not in {'.ies', '.ldt'}:
+                if PurePosixPath(info.filename).suffix.lower() not in allowed_extensions:
                     prepared.append(BatchFile(info.filename, None, 'Unsupported file extension.'))
                     continue
                 if info.file_size > max(info.compress_size, 1) * 200:

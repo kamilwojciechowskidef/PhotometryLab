@@ -8,8 +8,22 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+`Saved catalogue` zawiera read-only podgląd domyślnego checkpointu workera ZIP;
+znaczenie liczników i ograniczenia opisuje [import wsadowy](docs/BULK_IMPORT.md).
+
+W głównym `Saved catalogue` można wybrać producenta z listy, filtrować numer
+katalogowy, odświeżyć dane po imporcie z osobnego procesu oraz dodawać i usuwać
+pojedyncze oprawy w zestawie porównawczym sesji.
+
+- [Import ZIP i trwały katalog](docs/BULK_IMPORT.md) — migracja `006`, zestawy
+  IES/LDT/JSON/JPG/PNG, centralny katalog i wymagania przechowywania danych.
+
+- [Marka i numer katalogowy](docs/PRODUCT_METADATA.md) — odczyt z IES/LDT,
+  oznaczenia w interfejsie i zgodność z wcześniej zapisanymi rekordami.
+
 - [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
-  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
+  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki, schemat
+  szerokości w kolejnych odległościach i luks na osi.
 
 Multiple ZIP uploads and sequential directory import are described in
 [Import wsadowy](docs/BULK_IMPORT.md).
@@ -132,7 +146,8 @@ nie są zastępowane zerami ani tekstem w kolumnach liczbowych.
 Przeglądarka katalogu: zaznacz `Browse saved catalogue` w panelu bocznym.
 Filtry producenta i modelu wyszukują fragment tekstu bez rozróżniania wielkości
 liter. Strony zawierają do 50 pozycji z zapisaną fotometrią. Wybór pozycji
-dołącza je do istniejących wykresów i rankingu; wybór dotyczy bieżącej strony
+dołącza je do istniejących wykresów i rankingu po kliknięciu `Add selected to
+comparison`; do 20 wybranych rekordów pozostaje w sesji podczas zmiany strony
 i filtrów. Plik obecny w zestawie jest rozpoznawany po SHA-256.
 Wczytane pozycje otrzymują oznaczenie `[DB id]`, aby rozróżnić jednakowe nazwy.
 Przeglądanie wymaga migracji do `003`; nie ma nowej migracji dla przeglądarki.

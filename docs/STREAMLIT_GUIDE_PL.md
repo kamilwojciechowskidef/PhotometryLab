@@ -1,5 +1,36 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+W zakładce **Saved catalogue** opcja **Show folder import progress** otwiera
+odczyt statusów importu folderowego. Przycisk **Refresh import progress**
+odświeża panel ręcznie. To podgląd domyślnego checkpointu bieżącej bazy, a nie
+sterowanie workerem; nie pokazuje całkowitej liczby ZIP-ów ani czasu pozostałego.
+Znaczenie statusów i ograniczenia opisano w [BULK_IMPORT.md](BULK_IMPORT.md).
+
+Aktualizacja nawigacji: import ZIP znajduje się teraz w panelu bocznym pod
+**Import and save ZIP files**; zapis rozpoczyna **Import and save to catalogue**.
+Przeglądarka używa listy producentów i stron. Starsze wpisy mogą pokazywać opis
+zamiast numeru katalogowego.
+
+Aktualizacja importu ZIP: pierwsza zakładka **Saved catalogue** pokazuje trwale
+zapisane fotometrie bez zaznaczania opcji w panelu bocznym. Po wybraniu pozycji
+**Show associated ZIP assets** pokazuje jej zestawy z nowych importów, JSON
+i dostępne zdjęcie. Wymaga migracji `006`; starsze importy nie otrzymują
+automatycznie powiązań. Szczegóły ograniczeń: [BULK_IMPORT.md](BULK_IMPORT.md).
+
+W głównej zakładce katalogu `Find manufacturer in catalogue` zawęża listę,
+`Catalogue manufacturer` wybiera markę, a `Catalogue number or model` filtruje
+numer albo opis. `Refresh saved catalogue` odświeża listę i licznik w trakcie
+importu z osobnego procesu. Te filtry nie zmieniają niezależnych filtrów
+przeglądarki w panelu bocznym.
+
+W głównym katalogu **Choose saved luminaires on this catalogue page** pozwala
+wybrać wpisy z bieżącej strony, a **Add selected catalogue files to comparison**
+dodaje je do zestawu. Można powtórzyć wybór na kolejnych stronach i przy innych
+filtrach. Pierwsza wybrana pozycja zostaje proponowanym wzorcem, jeśli jest
+gotowa do porównania. Sekcja **Saved comparison set** umożliwia usuwanie
+konkretnych wpisów bez czyszczenia całego zestawu. Wybór jest wspólny z panelem
+bocznym, ograniczony do 20 zapisanych fotometrii i trwa tylko w bieżącej sesji.
+
 Aktualizacja 10 listopada 2026: dodano czwartą zakładkę **Photometric diagnostics**.
 Wybierz jedną oprawę w **Diagnostic luminaire**. **Diagnostic intensity scale**
 zmienia jednostki wykresu biegunowego (cd, jednostki źródłowe albo normalizacja).
@@ -33,9 +64,9 @@ projektowym.
 
 ## 2. Mapa strony i trzy różne zbiory danych
 
-Po lewej jest panel `1. Luminaire set`. W części głównej znajdują się tytuł,
-trzy liczniki, ostrzeżenie interpretacyjne i trzy zakładki. Na samym dole,
-poniżej stopki, znajduje się `Open batch import`.
+Po lewej jest panel `1. Luminaire set`, przeglądarka zapisanego katalogu oraz
+`Import and save ZIP files`. W części głównej są tytuł, trzy liczniki,
+ostrzeżenie interpretacyjne i pięć zakładek.
 
 | Zbiór | Co zawiera | Gdzie go widać |
 |---|---|---|
@@ -74,14 +105,24 @@ Po wyłączeniu porównywane są zapisane orientacje bez dopasowania obrotu.
 
 ### Browse saved catalogue
 
-Rozwija przeglądarkę zapisanej fotometrii. `Manufacturer contains` i
-`Model contains` wyszukują fragment tekstu bez rozróżniania wielkości liter.
-`Catalogue page` wybiera stronę, po maksymalnie 50 rekordów.
+Rozwija przeglądarkę zapisanej fotometrii. `Find manufacturer` zawęża listę
+marek, `Manufacturer` wybiera dokładną markę, a `Catalogue number or model
+contains` szuka fragmentu numeru lub opisu. `Catalogue page` jest listą
+rozwijaną istniejących stron, po maksymalnie 50 rekordów. Przy więcej niż
+1000 stron pojawia się dodatkowa lista zakresów stron.
 
-Tabela pokazuje ID, nazwę pliku, producenta, model i format. Pole
-`Add saved luminaires to comparison` dołącza wybrane rekordy do bieżącego
-zestawu. Wybór dotyczy bieżącej strony i filtrów. Nazwy otrzymują prefiks
+Tabela pokazuje ID, markę i numer katalogowy albo dostępny opis. Pole
+`Choose saved luminaires on this page` wybiera rekordy, a przycisk
+`Add selected to comparison` dodaje je do bieżącego zestawu. Maksymalnie 20
+zapisanych fotometrii pozostaje wybranych podczas zmiany strony i filtrów;
+`Clear saved comparison set` czyści wybór. Pierwsza dodana oprawa staje się
+wzorcem zamiast przykładu demo. Nazwy otrzymują prefiks
 `[DB id]`, aby odróżnić identyczne nazwy różnych rekordów.
+
+Po imporcie z osobnego procesu użyj `Refresh catalogue`, aby od razu odświeżyć
+bufor liczby wyników i producentów (w przeciwnym razie wygaśnie po maksymalnie
+około 60 sekundach). Zestaw porównawczy jest stanem sesji Streamlit; nie jest
+trwałą listą zapisaną w PostgreSQL.
 
 Identyczny SHA-256 już obecny w zestawie powoduje pominięcie powtórnego
 dołączenia i komunikat informacyjny. Widok obejmuje rekordy z fotometrią;
@@ -245,15 +286,15 @@ Tabela zawiera File, PC1, PC2, Cluster i Anomalous. Przycisk
 `Download ML results CSV` pobiera `ml_results.csv`. Zmiana zestawu zmienia
 projekcję, klastry i potencjalne anomalie; numer grupy nie jest trwałą kategorią.
 
-## 8. Open batch import — dolna część strony
+## 8. Import and save ZIP files — panel boczny
 
-Checkbox znajduje się pod stopką, poza trzema zakładkami. Otwiera formularz
+Checkbox znajduje się w panelu bocznym. Otwiera formularz
 trwałego importu. `Batch IES/LDT files` przyjmuje wiele pojedynczych plików,
 `Or multiple ZIP archives` wiele ZIP-ów. Należy użyć jednej z tych dróg.
 `Batch source / provenance` jest wymaganym opisem pochodzenia. Warto podać
 źródło, datę pozyskania i podstawę wykorzystania danych.
 
-`Import batch` rozpoczyna zapis. Dla pojedynczych IES/LDT widoczny jest pasek
+`Import and save to catalogue` rozpoczyna zapis. Dla pojedynczych IES/LDT widoczny jest pasek
 postępu po plikach, po zakończeniu tabela i `Download batch report`.
 Dla wielu ZIP-ów bieżący komunikat ma postać `Archive x/y: nazwa`. Aktualny
 wariant ZIP nie pokazuje paska postępu wewnątrz archiwum.
@@ -263,7 +304,8 @@ wariant ZIP nie pokazuje paska postępu wewnątrz archiwum.
 - Maksymalnie 500 plików w partii lub 500 wpisów pojedynczego ZIP-a.
 - Maksymalnie 5 000 000 bajtów na plik fotometryczny.
 - Maksymalnie 100 000 000 bajtów w partii i po rozpakowaniu jednego ZIP-a.
-- Łącznie maksymalnie 100 000 000 bajtów przesłanych ZIP-ów w formularzu.
+- Łącznie maksymalnie 500 000 000 bajtów przesłanych ZIP-ów w formularzu;
+  dla większego zbioru użyj workera folderowego poza przeglądarką.
 
 Archiwa są przetwarzane kolejno, ale uploady Streamlit pozostają w pamięci.
 ZIP-y nie są wypakowywane do wskazanych przez wpisy ścieżek dyskowych.
@@ -313,15 +355,15 @@ akcji przycisków są przechowywane w stanie sesji; tabela wyszukiwania lub
 podsumowanie importu mogą zniknąć po kolejnej interakcji. Historia PostgreSQL
 pozostaje trwała. Zakładki nie zapewniają niezależnych procesów w tle.
 
-W obecnym kodzie import blokuje wykonanie obsługującej go sesji. Nie ma trwałej
-kolejki z automatycznym wznowieniem. Ponowny import rozpoznaje hashe, ale tworzy
-nowe partie i aliasy. W trakcie operacji należy zaczekać na wynik i nie wywoływać
-powtórnego importu tej samej partii.
+Import przez przeglądarkę blokuje wykonanie obsługującej go sesji. Ponowne
+kliknięcie rozpoznaje hashe, ale tworzy nowe partie i aliasy. W trakcie operacji
+należy zaczekać na wynik i nie wywoływać ponownie importu tej samej partii.
 
 Dla wielu lokalnych ZIP-ów dostępny jest poza Streamlit moduł
 `python -m photolab.zip_import KATALOG --source "Opis źródła"`.
-Przetwarza jedno archiwum naraz, z dotychczasowymi limitami. Nie należy mylić go
-z kompletną kolejką wznawialną. Szczegóły: [BULK_IMPORT.md](BULK_IMPORT.md).
+Przetwarza jedno archiwum naraz z checkpointami zakończonych archiwów. Operacje
+przerwane w nieznanym stanie wymagają kontroli; nie są ponawiane automatycznie.
+Szczegóły: [BULK_IMPORT.md](BULK_IMPORT.md).
 
 ## 10. Typowe scenariusze
 
@@ -333,7 +375,7 @@ przekroje i zakres danych. Pobierz ranking i raport jakości.
 
 ### Zbudowanie trwałego katalogu
 
-Otwórz import na dole, wybierz pliki lub ZIP-y, opisz źródło i uruchom import.
+Otwórz import w panelu bocznym, wybierz pliki lub ZIP-y, opisz źródło i uruchom zapis.
 Sprawdź raport każdej partii. Następnie w panelu bocznym otwórz katalog,
 przefiltruj rekordy i dołącz tylko potrzebne pozycje do porównania.
 

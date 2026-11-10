@@ -6,6 +6,9 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Schemat szerokości wiązki i natężenia na osi w kolejnych odległościach;
+  pozostaje niezależna walidacja na danych referencyjnych.
+
 - [x] Korekta generatora asymetrycznego demo: spójność obu biegunów,
   maksimum odchylonej wiązki i regresja działania diagnostyki FWHM/luksów.
   Nie stanowi to walidacji danych producentów ani pełnego audytu raportu jakości.
@@ -26,8 +29,38 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Dodawanie opraw do porównań bezpośrednio z głównego katalogu i usuwanie
+  pojedynczych pozycji z zestawu sesji; wspólny limit z panelem bocznym.
+
+- [x] Pierwszy panel obserwacji workera ZIP w Streamlit: read-only checkpointy,
+  statusy i raport pojedynczej partii. Nie steruje workerem i nie szacuje czasu.
+- [ ] Trwały rejestr kompletnej kolejki oraz wiarygodne łączne postępy i kontrola
+  aktywności workera; panel nie obejmuje niestandardowych checkpointów.
+
+- [x] Wybór producenta, wyszukiwanie numeru katalogowego i odświeżanie także
+  bezpośrednio w głównej zakładce `Saved catalogue`.
+
+- [x] Czytelne sterowanie zapisem ZIP w panelu bocznym, lista producentów,
+  wybór istniejących stron i prezentacja numerów katalogowych / opisów.
+- [ ] Zmierzyć koszt dokładnego liczenia rekordów, list producentów i paginacji
+  na bazie 1,5–3 mln pozycji; bieżące wyniki są buforowane do 60 sekund, ale
+  zapytania `contains`, `DISTINCT`, `COUNT` oraz `OFFSET` nie gwarantują skali.
+
+- [x] Pierwszy etap zestawów ZIP: migracja `006`, powiązanie fotometrii z JSON
+  i obrazami w zakresie jednego archiwum, podgląd i centralny trwały katalog.
+- [ ] Trwała kolejka, odporność na przerwanie pomiędzy zapisem fotometrii a
+  zestawem oraz bezpieczny import 28 tys. ZIP-ów po pomiarze na próbce.
+
+- [x] Pierwszy etap metadanych produktów: osobny numer katalogowy z IES/LDT,
+  marka i numer na listach oraz w wynikach Streamlit; starsze rekordy pozostają
+  czytelne bez zgadywania źródła ich pola opisu.
+- [ ] Powiązanie IES/LDT ze zdjęciami i JSON w partiach ZIP, trwała kolejka,
+  kontrolowane uzupełnienie metadanych starszych rekordów i walidacja pochodzenia.
+
 - [x] Wielokrotny wybór ZIP oraz sekwencyjny import katalogu ZIP przez CLI.
 - [ ] Trwała kolejka ZIP z automatycznym wznawianiem po przerwaniu.
+  Dostępne są lokalne checkpointy ukończonych archiwów; niepewne operacje
+  wymagają ręcznej kontroli, a atomowe wznowienie na poziomie plików nadal nie istnieje.
 
 - [x] Wersjonowany indeks cech kształtu, przebudowa indeksu w małych
   transakcjach oraz kandydaci LSH z dokładnym rankingiem końcowym (migracja `005`).

@@ -286,7 +286,7 @@ def list_sources(url: str, offset: int = 0) -> list[dict]:
         raise DatabaseError('Cannot read the source catalogue.') from None
 
 
-def list_catalogue(url: str, *, manufacturer: str = "", model: str = "",
+def list_catalogue(url: str, *, manufacturer: str = "", model: str = "", manufacturer_exact: bool = False,
                    limit: int = 50, offset: int = 0) -> list[dict]:
     """Read a bounded page of native photometry metadata, without its matrices."""
     if not 1 <= limit <= 100 or offset < 0:
@@ -294,20 +294,60 @@ def list_catalogue(url: str, *, manufacturer: str = "", model: str = "",
     try:
         with psycopg.connect(url, connect_timeout=5) as connection:
             with connection.cursor() as cursor:
+                manufacturer_condition = ("lower(trim(coalesce(p.data->>'manufacturer', ''))) = lower(%s)"
+                                          if manufacturer_exact and manufacturer.strip() else
+                                          "strpos(lower(coalesce(p.data->>'manufacturer', '')), lower(%s)) > 0")
                 cursor.execute(
-                    """SELECT p.file_id, p.data->>'filename', p.data->>'manufacturer',
-                              p.data->>'luminaire', p.data->>'format', f.sha256
+                    f"""SELECT p.file_id, p.data->>'filename', p.data->>'manufacturer',
+                              p.data->>'luminaire', p.data->>'format', f.sha256,
+                              p.data->>'catalogue_number'
                        FROM photolab.photometries p
                        JOIN photolab.photometry_files f ON f.id = p.file_id
-                       WHERE strpos(lower(coalesce(p.data->>'manufacturer', '')), lower(%s)) > 0
-                         AND strpos(lower(coalesce(p.data->>'luminaire', '')), lower(%s)) > 0
+                       WHERE {manufacturer_condition}
+                         AND strpos(lower(concat_ws(' ', p.data->>'luminaire', p.data->>'catalogue_number')), lower(%s)) > 0
                        ORDER BY p.file_id LIMIT %s OFFSET %s""",
                     (manufacturer.strip(), model.strip(), limit, offset),
                 )
-                return [dict(zip(('file_id', 'filename', 'manufacturer', 'model', 'format', 'sha256'), row))
+                return [dict(zip(('file_id', 'filename', 'manufacturer', 'model', 'format', 'sha256', 'catalogue_number'), row))
                         for row in cursor.fetchall()]
     except psycopg.Error:
         raise DatabaseError("PostgreSQL catalogue read failed. Check the connection and migrations.") from None
+
+
+def list_catalogue_manufacturers(url: str, *, search: str = '', limit: int = 500) -> list[str]:
+    """Return a bounded, searchable list of exact manufacturer names."""
+    if not 1 <= limit <= 500:
+        raise ValueError('Invalid manufacturer limit.')
+    try:
+        with psycopg.connect(url, connect_timeout=5) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute('''SELECT DISTINCT trim(data->>'manufacturer') AS brand
+                    FROM photolab.photometries
+                    WHERE trim(coalesce(data->>'manufacturer', '')) <> ''
+                      AND strpos(lower(data->>'manufacturer'), lower(%s)) > 0
+                    ORDER BY brand LIMIT %s''', (search.strip(), limit))
+                return [row[0] for row in cursor.fetchall()]
+    except psycopg.Error:
+        raise DatabaseError('Cannot read catalogue manufacturers.') from None
+
+
+def count_catalogue(url: str, *, manufacturer: str = '', model: str = '',
+                    manufacturer_exact: bool = False) -> int:
+    """Count records using the same filtering rules as list_catalogue."""
+    manufacturer_condition = ("lower(trim(coalesce(p.data->>'manufacturer', ''))) = lower(%s)"
+                              if manufacturer_exact and manufacturer.strip() else
+                              "strpos(lower(coalesce(p.data->>'manufacturer', '')), lower(%s)) > 0")
+    try:
+        with psycopg.connect(url, connect_timeout=5) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(f'''SELECT count(*) FROM photolab.photometries p
+                    JOIN photolab.photometry_files f ON f.id = p.file_id
+                    WHERE {manufacturer_condition}
+                      AND strpos(lower(concat_ws(' ', p.data->>'luminaire', p.data->>'catalogue_number')), lower(%s)) > 0''',
+                    (manufacturer.strip(), model.strip()))
+                return int(cursor.fetchone()[0])
+    except psycopg.Error:
+        raise DatabaseError('Cannot count catalogue records.') from None
 
 
 def load_stored_photometry(url: str, file_id: int) -> Photometry | None:

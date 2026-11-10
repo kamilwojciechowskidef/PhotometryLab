@@ -69,3 +69,4 @@ def test_exact_ranking_keeps_same_filename_when_records_differ(monkeypatch):
     result = rank_catalogue("unused", reference, result_limit=10)
     assert result.candidates_examined == 1
     assert result.results[0][0] == 44
+    assert result.results[0][1].catalogue_number == 'Candidate'

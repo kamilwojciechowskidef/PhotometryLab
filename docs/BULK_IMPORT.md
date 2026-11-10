@@ -1,27 +1,141 @@
 # Import wsadowy
 
+## Podgląd postępu workera w Streamlit
+
+W zakładce **Saved catalogue** zaznacz **Show folder import progress** i użyj
+**Refresh import progress**. Panel czyta domyślny checkpoint SQLite w trybie
+tylko do odczytu, a opcjonalne szczegóły partii z PostgreSQL w sesji read-only.
+Nie uruchamia, nie zatrzymuje i nie wznawia workera. Odświeżanie jest ręczne.
+
+Liczniki obejmują wszystkie wpisy domyślnego checkpointu pasujące do bieżącego
+celu PostgreSQL, również z wcześniejszych uruchomień. To wpisy ścieżka + hash,
+nie liczba unikalnych produktów ani łączna liczba ZIP-ów w katalogu. Worker
+rejestruje archiwum dopiero po jego rozpoczęciu, dlatego nie znamy tu liczby
+oczekujących, procentu ani czasu zakończenia. `running` może oznaczać
+przerwanie — panel nie potwierdza działania procesu.
+
+Liczby `new`, `duplicate`, `errors` pochodzą z rozpoznanych podsumowań
+zakończonych archiwów i oznaczają wyniki operacji importu, nie unikalne pliki.
+Starsze lub niezrozumiałe podsumowania są jawnie pomijane w tych sumach.
+Tabela pokazuje do 50 ostatnich wpisów, skrót SHA-256 i znany numer partii;
+godziny SQLite są w UTC. Szczegóły pojedynczej partii pobierane są z bazy.
+
+Panel nie widzi importów sprzed checkpointów, innej bazy, innego serwera ani
+pliku przekazanego przez `--state-file`. Po awarii część plików może być już
+zapisana mimo braku numeru partii w checkpoincie. Nie używaj stanu panelu jako
+automatycznego upoważnienia do ponawiania; sprawdź historię i proces workera.
+
+Aktualizacja interfejsu: w panelu bocznym zaznacz **Import and save ZIP files**.
+Po wybraniu archiwów i opisaniu źródła przycisk **Import and save to catalogue**
+rozpoczyna zapis. Sam wybór plików nie zapisuje ich do bazy. Podsumowanie z
+błędami wymaga sprawdzenia; nie jest ogłaszane jako całkowity sukces.
+
+## Zestawy produktów z ZIP i trwały katalog
+
+Aktualizacja: przed importem ZIP uruchom migracje, w tym `006`:
+
+```powershell
+.venv\Scripts\python.exe -m photolab.database
+```
+
+Nowy importer archiwów zapisuje zestawy `IES/LDT + JSON + JPG/PNG`. Grupowanie
+obejmuje **jedno archiwum i jedną ścieżkę bez rozszerzenia**: `a/item.ies`
+i `a/item.json` należą do jednej grupy, a `b/item.ies` do innej. IES i LDT
+są opcjonalne niezależnie w każdej grupie, choć całe archiwum musi zawierać
+przynajmniej jedną fotometrię. Wspólna nazwa nie dowodzi równoważności
+fotometrycznej ani globalnej tożsamości produktów między archiwami.
+
+Obsługiwane są `.ies`, `.ldt`, `.json`, `.jpg`, `.jpeg`, `.png`. JSON musi być
+obiektem UTF-8; jeśli zawiera `hash`, jego wartość musi odpowiadać nazwie pliku.
+Rozszerzenia obrazów są sprawdzane po sygnaturze, a podgląd jest dodatkowo
+dekodowany w ograniczonym rozmiarze. Przy błędnym JSON-ie, sygnaturze lub
+niejednoznacznym typie w grupie archiwum jest odrzucane przed zapisem. Inne
+wpisy są pomijane z powodem w raporcie partii. Poprzednie zabezpieczenia ZIP
+i limity 500 wpisów, 5 MB/pliku i 100 MB archiwum pozostają aktywne.
+
+Fotometrie są zapisywane dotychczasowym mechanizmem, a oryginalne bajty
+wszystkich obsługiwanych plików w magazynie SHA-256. Nowe tabele
+`zip_product_bundles` i `zip_bundle_assets` zachowują powiązania, nazwy, hashe
+oraz JSON. JSON nie nadpisuje automatycznie marki i numeru odczytanych z IES/LDT;
+konflikty i priorytety metadanych wymagają osobnej implementacji.
+
+Zakładka **Saved catalogue** jest dostępna po uruchomieniu aplikacji i pokazuje
+fotometrie zapisane w PostgreSQL, bez zaznaczania opcji w panelu bocznym.
+Wybierz rekord i zaznacz **Show associated ZIP assets**, aby obejrzeć powiązane
+pliki, JSON i jedno zdjęcie. Istniejące rekordy sprzed tej migracji nie dostają
+automatycznie powiązań do sidecarów. Do analiz można wybrać pozycje z głównego
+katalogu albo przez **Browse saved catalogue** w panelu bocznym. Do bieżącej
+sesji trafiają wyłącznie wybrane pliki, a nie cała baza.
+
+**Ważne ograniczenie:** zapis fotometrii odbywa się w osobnych transakcjach,
+przed transakcją powiązań ZIP. Awaria na tym etapie może zostawić fotometrię
+bez powiązanych sidecarów; importer podaje numer partii do kontroli. Nie ma
+jeszcze gwarancji dokładnie jednokrotnego importu. Przeglądarkowe ponowienie
+tworzy nową partię i aliasy. Worker katalogowy ma checkpointy dla ukończonych
+archiwów, lecz niepewne przerwania wymagają kontroli. Przed pełnym zbiorem
+28 tys. ZIP-ów wykonaj pilotaż oraz pomiary czasu i pojemności.
+
+Po deploymencie dane będą widoczne tylko wtedy, gdy aplikacja docelowa ma dostęp
+do właściwej bazy PostgreSQL i trwałego katalogu `PHOTOLAB_ARTIFACT_DIR`.
+`127.0.0.1` wskazuje komputer, na którym działa serwer aplikacji. Restart
+kontenera lub serwera nie odtworzy plików z laptopa automatycznie. Kopie
+zapasowe muszą obejmować zarówno bazę, jak i magazyn oryginałów.
+
+Na czas zapisu powiązań importer ponownie oznacza partię jako `running`;
+zakończenie powiązań i status końcowy są zatwierdzane w jednej transakcji.
+Wąska przerwa między wcześniejszym zakończeniem importu fotometrii a ustawieniem
+`running` nadal istnieje, więc status nie jest jeszcze gwarancją pełnego importu.
+
+Istniejący interfejs importu wielu ZIP-ów i CLI `photolab.zip_import` korzystają
+teraz z nowego importera. Migracja 006 jest sprawdzana przed rozpoczęciem
+transakcji fotometrii. Limity i zachowanie przy przerwaniu opisane poniżej
+nadal dotyczą pojedynczej partii.
+
 ## Wiele ZIP-ów
 
 Uploader ZIP pozwala wybrać wiele archiwów. Łączny rozmiar uploadu jest
-ograniczony do 100 MB; Streamlit przechowuje przesłane archiwa w pamięci.
+ograniczony do 500 MB; Streamlit przechowuje przesłane archiwa w pamięci.
 Każdy ZIP tworzy osobną partię i zachowuje dotychczasowe limity 500 wpisów
 oraz 100 MB po rozpakowaniu. Podsumowanie archiwów można pobrać jako CSV.
 
 Dla dużego zbioru umieść ZIP-y w jednym lokalnym katalogu i uruchom:
 
 ```powershell
-.venv\Scripts\python.exe -m photolab.zip_import C:\dane\archiwa --source "Opis pochodzenia danych"
+.venv\Scripts\python.exe -m photolab.zip_import "C:\dane\archiwa" --source "Opis pochodzenia danych" --recursive
 ```
 
-Polecenie czyta jedno archiwum naraz i nie wymaga uploadu całego zbioru.
-Przetwarza ZIP-y bezpośrednio w podanym katalogu. Błąd archiwum zatrzymuje CLI;
-ukończone partie pozostają zapisane. Automatyczne wznawianie kolejki nie jest
-jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie.
+Polecenie czyta jedno archiwum naraz i nie ma łącznego limitu rozmiaru zbioru.
+`--recursive` obejmuje podkatalogi; bez niego przetwarzany jest tylko wskazany
+katalog. Nadal obowiązuje limit pojedynczego ZIP-a: 100 MB skompresowane i
+100 MB po rozpakowaniu, 500 wpisów oraz 5 MB na plik.
+
+Worker zapisuje lokalne checkpointy SQLite obok magazynu oryginałów (domyślnie
+`data/private/zip-import-checkpoints.sqlite3`). Klucz obejmuje rzeczywisty cel
+PostgreSQL, bezwzględną ścieżkę i SHA-256 archiwum. Po ponownym uruchomieniu
+pomija zakończone ZIP-y, kontynuując dalsze. W terminalu pokazuje postęp,
+liczbę nowych, zduplikowanych i odrzuconych plików, ID partii oraz przyczynę
+błędu. Brak archiwów jest błędem, nie pozornym sukcesem.
+
+Status `running` lub `needs_review` oznacza niepewną operację: część danych
+mogła już trafić do bazy. Worker nie ponawia jej automatycznie. Najpierw
+zatrzymaj wszystkie workery i sprawdź historię importów, opis ścieżki i numer
+partii/komunikat w terminalu. Dopiero po świadomej decyzji można użyć
+`--retry-uncertain`; wznowienie może utworzyć kolejne aliasy i grupy ZIP.
+`completed_with_errors` także wymaga przeglądu raportu, ale nie jest ponawiane.
+Proces zwraca niezerowy kod, gdy zostały błędy lub archiwa wymagające kontroli.
+
+Checkpointy nie obejmują importów wykonanych przed ich wprowadzeniem ani z
+innego pliku checkpointu. Pierwszy przebieg tego workera może więc ponownie
+przetworzyć wcześniejsze archiwa: SHA-256 rozpozna te same pliki, ale powstaną
+nowe partie, aliasy i powiązania. Samo zmienienie opisu źródła nie powoduje
+ponownego importu ukończonego archiwum. Przechowuj checkpoint na trwałym dysku;
+po zmianie bazy lub zawartości ZIP-a będzie on traktowany jako nowe zadanie.
+Nie uruchamiaj równolegle `--retry-uncertain` z innym aktywnym workerem.
 
 Przed użyciem uruchom `python -m photolab.database` (migracja `004`).
-Po restarcie Streamlit zaznacz `Open batch import` na dole strony.
-Wybierz wiele IES/LDT albo pojedynczy ZIP, opisz pochodzenie zbioru i kliknij
-`Import batch`. Automatyczne próbki demonstracyjne nie są importowane.
+Po restarcie Streamlit zaznacz `Import and save ZIP files` w panelu bocznym.
+Wybierz wiele IES/LDT albo wiele ZIP-ów, opisz pochodzenie zbioru i kliknij
+`Import and save to catalogue`. Automatyczne próbki demonstracyjne nie są importowane.
 
 Limity: 500 wpisów ZIP lub plików, 5 000 000 bajtów na plik, 100 000 000
 bajtów całej partii i rozpakowanego archiwum. ZIP jest czytany w pamięci,
@@ -47,10 +161,9 @@ Raport jest zapisywany po każdym pliku. Awaria między zatwierdzeniem pliku
 a zapisem raportu może pozostawić raport opóźniony względem katalogu.
 Status `running` może oznaczać przerwaną partię — nie oznacza sukcesu.
 Utrata możliwości zapisania raportu zatrzymuje przetwarzanie.
-Ponowne kliknięcie importu tworzy nową partię, a istniejące źródła są
-rozpoznawane po SHA-256. Nie ma jeszcze automatycznego wznawiania ani
-przetwarzania w tle. Interfejs pozostaje zajęty podczas importu.
+Ponowne kliknięcie importu w przeglądarce tworzy nową partię, a istniejące
+źródła są rozpoznawane po SHA-256. Interfejs pozostaje zajęty podczas importu;
+checkpointy opisane wyżej dotyczą wyłącznie workera katalogowego w terminalu.
 
-To pierwszy zakres skali ograniczony do 100 MB; nie deklarujemy wydajności
-dla większych zbiorów bez benchmarku. Bezpieczeństwo magazynu i kopie
+Nie deklarujemy wydajności dla 28 tys. archiwów bez benchmarku. Bezpieczeństwo magazynu i kopie
 zapasowe opisuje [SOURCE_STORAGE.md](SOURCE_STORAGE.md).
