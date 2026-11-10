@@ -92,9 +92,17 @@ rozwijaną istniejących stron, po maksymalnie 50 rekordów. Przy więcej niż
 1000 stron pojawia się dodatkowa lista zakresów stron.
 
 Tabela pokazuje ID, markę i numer katalogowy albo dostępny opis. Pole
-`Add saved luminaires to comparison` dołącza wybrane rekordy do bieżącego
-zestawu. Wybór dotyczy bieżącej strony i filtrów. Nazwy otrzymują prefiks
+`Choose saved luminaires on this page` wybiera rekordy, a przycisk
+`Add selected to comparison` dodaje je do bieżącego zestawu. Maksymalnie 20
+zapisanych fotometrii pozostaje wybranych podczas zmiany strony i filtrów;
+`Clear saved comparison set` czyści wybór. Pierwsza dodana oprawa staje się
+wzorcem zamiast przykładu demo. Nazwy otrzymują prefiks
 `[DB id]`, aby odróżnić identyczne nazwy różnych rekordów.
+
+Po imporcie z osobnego procesu użyj `Refresh catalogue`, aby od razu odświeżyć
+bufor liczby wyników i producentów (w przeciwnym razie wygaśnie po maksymalnie
+około 60 sekundach). Zestaw porównawczy jest stanem sesji Streamlit; nie jest
+trwałą listą zapisaną w PostgreSQL.
 
 Identyczny SHA-256 już obecny w zestawie powoduje pominięcie powtórnego
 dołączenia i komunikat informacyjny. Widok obejmuje rekordy z fotometrią;
@@ -276,7 +284,8 @@ wariant ZIP nie pokazuje paska postępu wewnątrz archiwum.
 - Maksymalnie 500 plików w partii lub 500 wpisów pojedynczego ZIP-a.
 - Maksymalnie 5 000 000 bajtów na plik fotometryczny.
 - Maksymalnie 100 000 000 bajtów w partii i po rozpakowaniu jednego ZIP-a.
-- Łącznie maksymalnie 100 000 000 bajtów przesłanych ZIP-ów w formularzu.
+- Łącznie maksymalnie 500 000 000 bajtów przesłanych ZIP-ów w formularzu;
+  dla większego zbioru użyj workera folderowego poza przeglądarką.
 
 Archiwa są przetwarzane kolejno, ale uploady Streamlit pozostają w pamięci.
 ZIP-y nie są wypakowywane do wskazanych przez wpisy ścieżek dyskowych.
@@ -326,15 +335,15 @@ akcji przycisków są przechowywane w stanie sesji; tabela wyszukiwania lub
 podsumowanie importu mogą zniknąć po kolejnej interakcji. Historia PostgreSQL
 pozostaje trwała. Zakładki nie zapewniają niezależnych procesów w tle.
 
-W obecnym kodzie import blokuje wykonanie obsługującej go sesji. Nie ma trwałej
-kolejki z automatycznym wznowieniem. Ponowny import rozpoznaje hashe, ale tworzy
-nowe partie i aliasy. W trakcie operacji należy zaczekać na wynik i nie wywoływać
-powtórnego importu tej samej partii.
+Import przez przeglądarkę blokuje wykonanie obsługującej go sesji. Ponowne
+kliknięcie rozpoznaje hashe, ale tworzy nowe partie i aliasy. W trakcie operacji
+należy zaczekać na wynik i nie wywoływać ponownie importu tej samej partii.
 
 Dla wielu lokalnych ZIP-ów dostępny jest poza Streamlit moduł
 `python -m photolab.zip_import KATALOG --source "Opis źródła"`.
-Przetwarza jedno archiwum naraz, z dotychczasowymi limitami. Nie należy mylić go
-z kompletną kolejką wznawialną. Szczegóły: [BULK_IMPORT.md](BULK_IMPORT.md).
+Przetwarza jedno archiwum naraz z checkpointami zakończonych archiwów. Operacje
+przerwane w nieznanym stanie wymagają kontroli; nie są ponawiane automatycznie.
+Szczegóły: [BULK_IMPORT.md](BULK_IMPORT.md).
 
 ## 10. Typowe scenariusze
 

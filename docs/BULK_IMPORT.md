@@ -45,9 +45,10 @@ bazy do bieżącej sesji.
 **Ważne ograniczenie:** zapis fotometrii odbywa się w osobnych transakcjach,
 przed transakcją powiązań ZIP. Awaria na tym etapie może zostawić fotometrię
 bez powiązanych sidecarów; importer podaje numer partii do kontroli. Nie ma
-jeszcze trwałej kolejki, automatycznego wznawiania ani gwarancji dokładnie
-jednokrotnego importu. Ponowienie tworzy nową partię i aliasy. Nie uruchamiaj
-pełnego zbioru 28 tys. ZIP-ów przed przygotowaniem kolejki i pilotażem.
+jeszcze gwarancji dokładnie jednokrotnego importu. Przeglądarkowe ponowienie
+tworzy nową partię i aliasy. Worker katalogowy ma checkpointy dla ukończonych
+archiwów, lecz niepewne przerwania wymagają kontroli. Przed pełnym zbiorem
+28 tys. ZIP-ów wykonaj pilotaż oraz pomiary czasu i pojemności.
 
 Po deploymencie dane będą widoczne tylko wtedy, gdy aplikacja docelowa ma dostęp
 do właściwej bazy PostgreSQL i trwałego katalogu `PHOTOLAB_ARTIFACT_DIR`.
@@ -68,20 +69,43 @@ nadal dotyczą pojedynczej partii.
 ## Wiele ZIP-ów
 
 Uploader ZIP pozwala wybrać wiele archiwów. Łączny rozmiar uploadu jest
-ograniczony do 100 MB; Streamlit przechowuje przesłane archiwa w pamięci.
+ograniczony do 500 MB; Streamlit przechowuje przesłane archiwa w pamięci.
 Każdy ZIP tworzy osobną partię i zachowuje dotychczasowe limity 500 wpisów
 oraz 100 MB po rozpakowaniu. Podsumowanie archiwów można pobrać jako CSV.
 
 Dla dużego zbioru umieść ZIP-y w jednym lokalnym katalogu i uruchom:
 
 ```powershell
-.venv\Scripts\python.exe -m photolab.zip_import C:\dane\archiwa --source "Opis pochodzenia danych"
+.venv\Scripts\python.exe -m photolab.zip_import "C:\dane\archiwa" --source "Opis pochodzenia danych" --recursive
 ```
 
-Polecenie czyta jedno archiwum naraz i nie wymaga uploadu całego zbioru.
-Przetwarza ZIP-y bezpośrednio w podanym katalogu. Błąd archiwum zatrzymuje CLI;
-ukończone partie pozostają zapisane. Automatyczne wznawianie kolejki nie jest
-jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie.
+Polecenie czyta jedno archiwum naraz i nie ma łącznego limitu rozmiaru zbioru.
+`--recursive` obejmuje podkatalogi; bez niego przetwarzany jest tylko wskazany
+katalog. Nadal obowiązuje limit pojedynczego ZIP-a: 100 MB skompresowane i
+100 MB po rozpakowaniu, 500 wpisów oraz 5 MB na plik.
+
+Worker zapisuje lokalne checkpointy SQLite obok magazynu oryginałów (domyślnie
+`data/private/zip-import-checkpoints.sqlite3`). Klucz obejmuje rzeczywisty cel
+PostgreSQL, bezwzględną ścieżkę i SHA-256 archiwum. Po ponownym uruchomieniu
+pomija zakończone ZIP-y, kontynuując dalsze. W terminalu pokazuje postęp,
+liczbę nowych, zduplikowanych i odrzuconych plików, ID partii oraz przyczynę
+błędu. Brak archiwów jest błędem, nie pozornym sukcesem.
+
+Status `running` lub `needs_review` oznacza niepewną operację: część danych
+mogła już trafić do bazy. Worker nie ponawia jej automatycznie. Najpierw
+zatrzymaj wszystkie workery i sprawdź historię importów, opis ścieżki i numer
+partii/komunikat w terminalu. Dopiero po świadomej decyzji można użyć
+`--retry-uncertain`; wznowienie może utworzyć kolejne aliasy i grupy ZIP.
+`completed_with_errors` także wymaga przeglądu raportu, ale nie jest ponawiane.
+Proces zwraca niezerowy kod, gdy zostały błędy lub archiwa wymagające kontroli.
+
+Checkpointy nie obejmują importów wykonanych przed ich wprowadzeniem ani z
+innego pliku checkpointu. Pierwszy przebieg tego workera może więc ponownie
+przetworzyć wcześniejsze archiwa: SHA-256 rozpozna te same pliki, ale powstaną
+nowe partie, aliasy i powiązania. Samo zmienienie opisu źródła nie powoduje
+ponownego importu ukończonego archiwum. Przechowuj checkpoint na trwałym dysku;
+po zmianie bazy lub zawartości ZIP-a będzie on traktowany jako nowe zadanie.
+Nie uruchamiaj równolegle `--retry-uncertain` z innym aktywnym workerem.
 
 Przed użyciem uruchom `python -m photolab.database` (migracja `004`).
 Po restarcie Streamlit zaznacz `Import and save ZIP files` w panelu bocznym.
@@ -112,10 +136,9 @@ Raport jest zapisywany po każdym pliku. Awaria między zatwierdzeniem pliku
 a zapisem raportu może pozostawić raport opóźniony względem katalogu.
 Status `running` może oznaczać przerwaną partię — nie oznacza sukcesu.
 Utrata możliwości zapisania raportu zatrzymuje przetwarzanie.
-Ponowne kliknięcie importu tworzy nową partię, a istniejące źródła są
-rozpoznawane po SHA-256. Nie ma jeszcze automatycznego wznawiania ani
-przetwarzania w tle. Interfejs pozostaje zajęty podczas importu.
+Ponowne kliknięcie importu w przeglądarce tworzy nową partię, a istniejące
+źródła są rozpoznawane po SHA-256. Interfejs pozostaje zajęty podczas importu;
+checkpointy opisane wyżej dotyczą wyłącznie workera katalogowego w terminalu.
 
-To pierwszy zakres skali ograniczony do 100 MB; nie deklarujemy wydajności
-dla większych zbiorów bez benchmarku. Bezpieczeństwo magazynu i kopie
+Nie deklarujemy wydajności dla 28 tys. archiwów bez benchmarku. Bezpieczeństwo magazynu i kopie
 zapasowe opisuje [SOURCE_STORAGE.md](SOURCE_STORAGE.md).

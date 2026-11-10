@@ -22,7 +22,7 @@ from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
 from photolab.product_labels import product_label
-from photolab.catalogue_controls import BRAND_LIMIT, get_brands, get_count, select_page
+from photolab.catalogue_controls import BRAND_LIMIT, get_brands, get_count, invalidate_catalogue_cache, select_page
 
 
 APP_VERSION = "0.1"
@@ -75,6 +75,8 @@ with st.sidebar:
     browse_catalogue = st.checkbox("Browse saved catalogue", value=False, key="browse_catalogue")
     if browse_catalogue:
         try:
+            if st.button('Refresh catalogue', key='refresh_catalogue'):
+                invalidate_catalogue_cache()
             catalogue_url = database_url()
             brand_search = st.text_input("Find manufacturer", key="sidebar_brand_search")
             brands = get_brands(catalogue_url, brand_search)

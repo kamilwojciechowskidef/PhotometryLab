@@ -198,3 +198,38 @@ def test_app_searches_indexed_catalogue_with_one_uploaded_reference(monkeypatch)
 
     assert ('search', 'reference.ies') in calls
     assert any('No indexed candidates' in message for kind, message in calls if kind == 'info')
+
+
+def test_saved_selection_persists_between_pages_and_becomes_reference(monkeypatch):
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    from photolab.demo import make_ies
+    from photolab.parsers import load_photometry
+    import photolab.database as database
+
+    monkeypatch.setattr(database, 'database_url', lambda: 'unused')
+    def listing(url, *, offset=0, **kwargs):
+        number = 10 if offset == 0 else 20
+        return [dict(file_id=number, filename=f'{number}.ies', manufacturer='Example',
+                     model=f'Model {number}', catalogue_number=f'CAT-{number}',
+                     format='IES', sha256=f'{number:064x}')]
+    monkeypatch.setattr(database, 'list_catalogue', listing)
+    monkeypatch.setattr(database, 'load_stored_photometries',
+                        lambda url, ids: {i: load_photometry(f'{i}.ies', make_ies(f'CAT-{i}', 'narrow'))
+                                          for i in ids})
+
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / 'app.py').run(timeout=30)
+    app.checkbox(key='browse_catalogue').check().run(timeout=30)
+    app.multiselect[0].select(app.multiselect[0].options[0]).run(timeout=30)
+    app.button(key='add_catalogue_selection').click().run(timeout=30)
+    assert app.selectbox(key='ref_file').value.startswith('[DB 10]')
+    assert list(app.session_state['selected_catalogue_files']) == [10]
+    app.selectbox(key='sidebar_page_None__1').select(2).run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10]
+    app.multiselect[0].select(app.multiselect[0].options[0]).run(timeout=30)
+    app.button(key='add_catalogue_selection').click().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10, 20]
+    assert app.selectbox(key='ref_file').value.startswith('[DB 20]')
+    app.checkbox(key='browse_catalogue').uncheck().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10, 20]
+    assert not app.exception

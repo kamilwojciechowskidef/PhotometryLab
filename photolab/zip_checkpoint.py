@@ -42,5 +42,9 @@ class ZipCheckpoint:
                 updated_at=CURRENT_TIMESTAMP WHERE target=? AND path=? AND sha256=?''',
                 (status, batch_id, message[:2000], target, path, digest))
 
+    def details(self, target, path, digest):
+        return self.connection.execute('''SELECT batch_id, message FROM archives
+            WHERE target=? AND path=? AND sha256=?''', (target, path, digest)).fetchone()
+
     def close(self):
         self.connection.close()

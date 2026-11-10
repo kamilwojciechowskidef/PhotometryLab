@@ -45,6 +45,8 @@ pozostają do wykonania.
 
 - [x] Wielokrotny wybór ZIP oraz sekwencyjny import katalogu ZIP przez CLI.
 - [ ] Trwała kolejka ZIP z automatycznym wznawianiem po przerwaniu.
+  Dostępne są lokalne checkpointy ukończonych archiwów; niepewne operacje
+  wymagają ręcznej kontroli, a atomowe wznowienie na poziomie plików nadal nie istnieje.
 
 - [x] Wersjonowany indeks cech kształtu, przebudowa indeksu w małych
   transakcjach oraz kandydaci LSH z dokładnym rankingiem końcowym (migracja `005`).

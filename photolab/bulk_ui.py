@@ -8,11 +8,17 @@ from .bulk import prepare_files, import_batch, batch_history
 from .zip_products import import_product_zip
 from .catalogue_controls import invalidate_catalogue_cache
 
+MAX_BROWSER_ZIP_BYTES = 500_000_000
+
 
 def render_bulk_import(version):
     st.subheader('Import and save to catalogue')
     st.caption('Selecting files does not save them. Enter a source and press the save button below.')
-    st.caption('Up to 500 entries, 5 MB per file and 100 MB per batch. ZIP files are read without extraction. Each file is committed separately.')
+    st.caption('Up to 500 entries and 100 MB expanded per ZIP. For large collections use the local-folder worker below.')
+    if st.checkbox('Import a large local ZIP folder', key='large_zip_instructions'):
+        st.caption('Use a folder on the machine running the app. The worker reads one ZIP at a time and keeps archive-level checkpoints; there is no total dataset-size limit.')
+        st.code('.venv\\Scripts\\python.exe -m photolab.zip_import "C:\\path\\to\\zips" --source "Dataset source" --recursive', language='powershell')
+        st.caption('Replace the folder and source. Interrupted or uncertain archives need review; do not start two workers with --retry-uncertain.')
     uploads = st.file_uploader('Batch IES/LDT files', type=['ies', 'ldt'], accept_multiple_files=True, key='batch_files')
     archives = st.file_uploader('Or multiple ZIP archives', type=['zip'], accept_multiple_files=True, key='batch_zips')
     description = st.text_input('Batch source / provenance', key='batch_description')
@@ -23,8 +29,8 @@ def render_bulk_import(version):
             if not description.strip():
                 raise ValueError('Describe the source of this batch before importing.')
             if archives:
-                if sum(archive.size for archive in archives) > 100_000_000:
-                    raise ValueError('Browser ZIP uploads exceed 100 MB. Import smaller groups.')
+                if sum(archive.size for archive in archives) > MAX_BROWSER_ZIP_BYTES:
+                    raise ValueError('Browser ZIP uploads exceed 500 MB. Use the local-folder worker for large collections.')
                 summaries = []
                 for number, archive in enumerate(archives, 1):
                     st.write(f'Archive {number}/{len(archives)}: {archive.name}')
@@ -35,6 +41,9 @@ def render_bulk_import(version):
                         invalidate_catalogue_cache()
                         summaries.append(dict(archive=archive.name, batch_id=batch_id,
                             bundles=len(groups), photometry_files=len(rows) - len(skipped), skipped=len(skipped),
+                            new=sum(r['outcome'] == 'new' for r in rows),
+                            duplicate=sum(r['outcome'] == 'duplicate' for r in rows),
+                            rejected=sum(r['outcome'] == 'rejected' for r in rows),
                             errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
                     except (ValueError, OSError, DatabaseError) as error:
                         # A failed archive may already have committed some photometry.
