@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
+  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
+
 Multiple ZIP uploads and sequential directory import are described in
 [Import wsadowy](docs/BULK_IMPORT.md).
 
@@ -116,6 +119,10 @@ examples/              Exported IES/LDT examples
 ```
 
 ## Tests
+
+Interfejs wymaga Streamlit >=1.51 (parametr `width="stretch"` dla tabel i wykresów).
+Brakujące wartości liczbowe w tabeli jakości są puste, również w eksporcie CSV;
+nie są zastępowane zerami ani tekstem w kolumnach liczbowych.
 
 Przeglądarka katalogu: zaznacz `Browse saved catalogue` w panelu bocznym.
 Filtry producenta i modelu wyszukują fragment tekstu bez rozróżniania wielkości

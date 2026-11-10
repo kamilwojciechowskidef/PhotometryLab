@@ -1,5 +1,15 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+Aktualizacja 10 listopada 2026: dodano czwartą zakładkę **Photometric diagnostics**.
+Wybierz jedną oprawę w **Diagnostic luminaire**. **Diagnostic intensity scale**
+zmienia jednostki wykresu biegunowego (cd, jednostki źródłowe albo normalizacja).
+Niżej są granice i szerokości FWHM dwóch przekrojów, suwak maksymalnej odległości,
+diagram projekcji wiązki, tabela luksów na osi oraz trzy eksporty CSV.
+Zakładka korzysta z pojedynczego odczytanego modelu, także wyłączonego z rankingu;
+brakujące dane ograniczają odpowiednie obliczenia. Nie zmienia zapisanej bazy.
+Pełny opis metody i ograniczeń: [PHOTOMETRIC_DIAGNOSTICS.md](PHOTOMETRIC_DIAGNOSTICS.md).
+Poniższe sekcje opisują wcześniejsze trzy zakładki i pozostały interfejs.
+
 Stan opisu: 22 października 2026 r. Dokument opisuje aktualne `app.py` i
 `photolab/bulk_ui.py`, w tym pierwszy etap obsługi wielu ZIP-ów. Etykiety
 angielskie pozostawiono dosłownie, aby można było znaleźć je na ekranie.
@@ -167,7 +177,8 @@ Główna tabela opisuje bieżący zestaw, a nie cały katalog PostgreSQL.
 | Covers γ 0–90° | Czy zakres pomiarowy obejmuje dolną półprzestrzeń |
 | Reasons / warnings | Przyczyny ograniczeń, odrzucenia i uwagi parsera |
 
-`unavailable` oznacza brak dostępnej wartości, nie zero. `none` w uwagach
+Brakujące wartości liczbowe są puste (w CSV również puste), nie są zerami.
+Kolumny tekstowe mogą zawierać `unavailable` oznaczające brak danych. `none` w uwagach
 oznacza brak zgłoszonych uwag; w kolumnie symetrii oznacza brak redukcji
 symetrycznej. Symetria `radial` jest obrotowa, `plane0` i `plane90` dotyczą
 odpowiednich płaszczyzn odbicia, `quadrants` — ćwiartek.

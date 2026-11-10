@@ -60,6 +60,12 @@ pozostają do wykonania.
 
 ## P2 — porównania fotometryczne
 
+- [x] Diagnostyka jednej oprawy: przekroje biegunowe C0–C180/C90–C270,
+  FWHM na natywnych kątach, projekcja granic wiązki, przybliżenie luksów na osi
+  i eksport CSV. Definicje i ograniczenia: [PHOTOMETRIC_DIAGNOSTICS.md](PHOTOMETRIC_DIAGNOSTICS.md).
+- [ ] Walidacja diagnostyki i kątów FWHM na niezależnych plikach referencyjnych
+  oraz kartach producentów (z uwzględnieniem definicji osi i szerokości).
+
 - [ ] Jawne alternatywy metryk (np. cosinus, RMSE, korelacja/Pearson z opisem ograniczeń); porównywalne warunki testu.
 - [ ] Zbadać wrażliwość rankingu na siatkę, symetrię, orientację oprawy, szum danych i dopuszczalne obroty.
 - [ ] Rozdzielić `shape similarity` od filtrów potencjalnych zamienników (metadane i wymagania użytkownika).
