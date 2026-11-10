@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
+  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
+
 Multiple ZIP uploads and sequential directory import are described in
 [Import wsadowy](docs/BULK_IMPORT.md).
 
@@ -52,6 +55,11 @@ The application requires **Python 3.10 or later** and the libraries listed in `r
 If `py -3` fails to launch the interpreter, check your Python installation and the `py` launcher. If `python` works, you can use `python -m venv .venv`. The remaining commands use the interpreter in `.venv` directly, so activating the environment is unnecessary.
 
 ## Current features
+
+Korekta demo (2026-11-10): próbka asymetryczna używa odległości kątowej od
+odchylonej osi wiązki i zachowuje spójność biegunów. Parametry sigma w nazwach
+próbek nie oznaczają FWHM. Opis i wpływ na odtwarzalność benchmarków:
+[diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md).
 
 1. Import multiple files and report errors rather than silently skipping files.
 2. Read IES LM-63 Type C files (`TILT=NONE`) and EULUMDAT LDT files (`Isym` symmetry codes 0–4).
@@ -116,6 +124,10 @@ examples/              Exported IES/LDT examples
 ```
 
 ## Tests
+
+Interfejs wymaga Streamlit >=1.51 (parametr `width="stretch"` dla tabel i wykresów).
+Brakujące wartości liczbowe w tabeli jakości są puste, również w eksporcie CSV;
+nie są zastępowane zerami ani tekstem w kolumnach liczbowych.
 
 Przeglądarka katalogu: zaznacz `Browse saved catalogue` w panelu bocznym.
 Filtry producenta i modelu wyszukują fragment tekstu bez rozróżniania wielkości
