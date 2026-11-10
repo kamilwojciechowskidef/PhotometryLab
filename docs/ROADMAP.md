@@ -22,6 +22,9 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Wielokrotny wybór ZIP oraz sekwencyjny import katalogu ZIP przez CLI.
+- [ ] Trwała kolejka ZIP z automatycznym wznawianiem po przerwaniu.
+
 - [x] Wersjonowany indeks cech kształtu, przebudowa indeksu w małych
   transakcjach oraz kandydaci LSH z dokładnym rankingiem końcowym (migracja `005`).
 - [ ] Benchmark na reprezentatywnej kopii bazy dla 1,5–3 mln plików:

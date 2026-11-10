@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+Multiple ZIP uploads and sequential directory import are described in
+[Import wsadowy](docs/BULK_IMPORT.md).
+
 - [Import wsadowy](docs/BULK_IMPORT.md) — wiele plików lub ZIP, migracja `004`,
   limity, wspólne partie i historia raportów CSV.
 - [Indeks cech dla dużego katalogu](docs/FEATURE_INDEX.md) — migracja `005`,
