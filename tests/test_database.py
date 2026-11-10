@@ -9,7 +9,7 @@ from photolab.demo import make_ies
 from photolab.parsers import load_photometry
 from photolab.storage import photometry_to_data
 from photolab.artifacts import read_source
-from photolab.database import list_catalogue
+from photolab.database import list_catalogue, count_catalogue, list_catalogue_manufacturers
 
 
 class FakeCursor:
@@ -49,6 +49,27 @@ def test_catalogue_filters_are_parameters_and_results_are_bounded(monkeypatch):
 def test_catalogue_rejects_unbounded_request():
     with pytest.raises(ValueError):
         list_catalogue('unused', limit=10000)
+
+
+def test_catalogue_exact_manufacturer_and_count_use_same_filters(monkeypatch):
+    cursor = FakeCursor([(17,)])
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda *a, **k: FakeConnection(cursor))
+    assert count_catalogue('unused', manufacturer="O'Reilly", model='A%', manufacturer_exact=True) == 17
+    sql, params = cursor.calls[0]
+    assert ' = lower(%s)' in sql
+    assert "O'Reilly" not in sql
+    assert params == ("O'Reilly", 'A%')
+
+
+def test_manufacturers_search_is_parameterized_and_bounded(monkeypatch):
+    cursor = FakeCursor([('BEGA',), ('Example',)])
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda *a, **k: FakeConnection(cursor))
+    assert list_catalogue_manufacturers('unused', search="O'Reilly", limit=2) == ['BEGA', 'Example']
+    sql, params = cursor.calls[0]
+    assert "O'Reilly" not in sql
+    assert params == ("O'Reilly", 2)
+    with pytest.raises(ValueError):
+        list_catalogue_manufacturers('unused', limit=501)
 
 
 class FakeConnection:

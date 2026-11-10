@@ -22,6 +22,7 @@ from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
 from photolab.product_labels import product_label
+from photolab.catalogue_controls import BRAND_LIMIT, get_brands, get_count, select_page
 
 
 APP_VERSION = "0.1"
@@ -71,23 +72,35 @@ for name, content in payload.items():
 with st.sidebar:
     browse_catalogue = st.checkbox("Browse saved catalogue", value=False, key="browse_catalogue")
     if browse_catalogue:
-        manufacturer_filter = st.text_input("Manufacturer contains")
-        model_filter = st.text_input("Model contains")
-        page = st.number_input("Catalogue page", min_value=1, value=1, step=1)
         try:
             catalogue_url = database_url()
-            catalogue_rows = list_catalogue(catalogue_url, manufacturer=manufacturer_filter,
-                                           model=model_filter, offset=(int(page) - 1) * 50)
+            brand_search = st.text_input("Find manufacturer", key="sidebar_brand_search")
+            brands = get_brands(catalogue_url, brand_search)
+            if len(brands) == BRAND_LIMIT:
+                st.caption('Showing the first 500 manufacturers. Refine the search to find others.')
+            manufacturer_filter = st.selectbox("Manufacturer", [None, *brands], key='sidebar_brand',
+                format_func=lambda brand: brand if brand is not None else 'All manufacturers')
+            model_filter = st.text_input("Catalogue number or model contains", key='sidebar_model')
+            total = get_count(catalogue_url, manufacturer_filter or '', model_filter)
+            st.caption(f'{total:,} matching photometry file(s).')
+            page = select_page(st, total, key=f'sidebar_page_{manufacturer_filter}_{model_filter}')
+            catalogue_rows = list_catalogue(catalogue_url, manufacturer=manufacturer_filter or '',
+                                           manufacturer_exact=bool(manufacturer_filter), model=model_filter,
+                                           offset=(int(page) - 1) * 50)
             if not catalogue_rows:
                 st.info("No saved photometry on this page. Earlier metadata-only imports must be uploaded and saved again.")
             else:
-                st.dataframe(pd.DataFrame(catalogue_rows).drop(columns=['sha256']), hide_index=True)
+                st.dataframe(pd.DataFrame([{
+                    'ID': row['file_id'], 'Brand': row['manufacturer'],
+                    'Catalogue / model': row.get('catalogue_number') or row['model'] or 'Unavailable',
+                } for row in catalogue_rows]), hide_index=True, width='stretch')
                 choices = {row['file_id']: row for row in catalogue_rows}
                 selected_ids = st.multiselect(
                     "Add saved luminaires to comparison", list(choices),
-                    format_func=lambda file_id: f"#{file_id} · {choices[file_id]['manufacturer']} · {choices[file_id].get('catalogue_number') or choices[file_id]['model']} · {choices[file_id]['filename']}",
+                    format_func=lambda file_id: f"{choices[file_id]['manufacturer']} · {choices[file_id].get('catalogue_number') or choices[file_id]['model'] or 'Unavailable'} · #{file_id}",
                 )
                 st.caption("Selection applies to the current page and filters. Up to 50 records per page.")
+                st.caption('Older entries may show the source description in place of a catalogue number.')
                 loaded_hashes = {identify_file(content).sha256 for content in payload.values()}
                 used_names = set(payload)
                 for file_id in selected_ids:
@@ -109,6 +122,11 @@ with st.sidebar:
                     loaded_hashes.add(row['sha256'])
         except DatabaseError as error:
             st.error(str(error))
+
+    st.divider()
+    if st.checkbox('Import and save ZIP files', value=False, key='open_bulk'):
+        from photolab.bulk_ui import render_bulk_import
+        render_bulk_import(APP_VERSION)
 
 eligible = []
 excluded = []
@@ -138,22 +156,26 @@ t0, t1, t2, t3, t4 = st.tabs(["Saved catalogue", "Comparison and ranking", "Cata
 with t0:
     st.subheader('Saved photometry catalogue')
     st.caption('Persistent catalogue from PostgreSQL. ZIP imports and individually saved files remain available after restarting the app.')
-    catalogue_page_main = st.number_input('Saved catalogue page', min_value=1, value=1, step=1,
-                                          key='catalogue_main_page')
     try:
-        main_rows = list_catalogue(database_url(), limit=50, offset=(int(catalogue_page_main) - 1) * 50)
+        main_url = database_url()
+        main_total = get_count(main_url)
+        st.caption(f'{main_total:,} saved photometry file(s).')
+        catalogue_page_main = select_page(st, main_total, key='main_page')
+        main_rows = list_catalogue(main_url, limit=50, offset=(int(catalogue_page_main) - 1) * 50)
         if main_rows:
-            st.dataframe(pd.DataFrame(main_rows).drop(columns=['sha256']).rename(columns={
-                'file_id': 'ID', 'filename': 'Original file', 'manufacturer': 'Brand',
-                'model': 'Model / description', 'format': 'Format', 'catalogue_number': 'Catalogue number',
-            }), width='stretch', hide_index=True)
+            st.dataframe(pd.DataFrame([{
+                'ID': row['file_id'], 'Brand': row['manufacturer'],
+                'Catalogue / model': row.get('catalogue_number') or row['model'] or 'Unavailable',
+                'Format': row['format'],
+            } for row in main_rows]), width='stretch', hide_index=True)
             st.caption('Select a saved entry for comparisons through Browse saved catalogue in the sidebar. '
                        'Each IES or LDT is a separate photometry entry.')
             main_choices = {row['file_id']: row for row in main_rows}
             main_file = st.selectbox('Saved photometry details', list(main_choices),
                 format_func=lambda key: f"#{key} · {main_choices[key]['manufacturer']} · "
-                                        f"{main_choices[key].get('catalogue_number') or main_choices[key]['model']} · "
-                                        f"{main_choices[key]['filename']}", key='catalogue_main_file')
+                                        f"{main_choices[key].get('catalogue_number') or main_choices[key]['model'] or 'Unavailable'}",
+                key='catalogue_main_file')
+            st.caption(f"Original filename: {main_choices[main_file]['filename']}")
             if st.checkbox('Show associated ZIP assets', key='catalogue_assets'):
                 from photolab.zip_products import list_related_bundles, load_bundle, preview_image
                 try:
@@ -408,7 +430,3 @@ with t3:
 
 st.divider()
 st.caption("PhotometryLab 0.1 · Research use / prototype · Sample data are synthetic only")
-
-if st.checkbox('Open batch import', value=False, key='open_bulk'):
-    from photolab.bulk_ui import render_bulk_import
-    render_bulk_import(APP_VERSION)

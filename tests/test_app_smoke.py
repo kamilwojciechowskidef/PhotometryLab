@@ -9,6 +9,13 @@ from contextlib import nullcontext
 from types import ModuleType, SimpleNamespace
 
 
+@pytest.fixture(autouse=True)
+def catalogue_statistics_without_database(monkeypatch):
+    import photolab.catalogue_controls as controls
+    monkeypatch.setattr(controls, 'get_count', lambda *args, **kwargs: 100)
+    monkeypatch.setattr(controls, 'get_brands', lambda *args, **kwargs: ('Example',))
+
+
 @pytest.mark.parametrize('unavailable', [False, True])
 def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
     from photolab.demo import make_ies

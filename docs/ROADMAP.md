@@ -26,6 +26,12 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Czytelne sterowanie zapisem ZIP w panelu bocznym, lista producentów,
+  wybór istniejących stron i prezentacja numerów katalogowych / opisów.
+- [ ] Zmierzyć koszt dokładnego liczenia rekordów, list producentów i paginacji
+  na bazie 1,5–3 mln pozycji; bieżące wyniki są buforowane do 60 sekund, ale
+  zapytania `contains`, `DISTINCT`, `COUNT` oraz `OFFSET` nie gwarantują skali.
+
 - [x] Pierwszy etap zestawów ZIP: migracja `006`, powiązanie fotometrii z JSON
   i obrazami w zakresie jednego archiwum, podgląd i centralny trwały katalog.
 - [ ] Trwała kolejka, odporność na przerwanie pomiędzy zapisem fotometrii a

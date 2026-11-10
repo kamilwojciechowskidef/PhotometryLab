@@ -1,5 +1,10 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+Aktualizacja nawigacji: import ZIP znajduje się teraz w panelu bocznym pod
+**Import and save ZIP files**; zapis rozpoczyna **Import and save to catalogue**.
+Przeglądarka używa listy producentów i stron. Starsze wpisy mogą pokazywać opis
+zamiast numeru katalogowego.
+
 Aktualizacja importu ZIP: pierwsza zakładka **Saved catalogue** pokazuje trwale
 zapisane fotometrie bez zaznaczania opcji w panelu bocznym. Po wybraniu pozycji
 **Show associated ZIP assets** pokazuje jej zestawy z nowych importów, JSON
@@ -39,9 +44,9 @@ projektowym.
 
 ## 2. Mapa strony i trzy różne zbiory danych
 
-Po lewej jest panel `1. Luminaire set`. W części głównej znajdują się tytuł,
-trzy liczniki, ostrzeżenie interpretacyjne i trzy zakładki. Na samym dole,
-poniżej stopki, znajduje się `Open batch import`.
+Po lewej jest panel `1. Luminaire set`, przeglądarka zapisanego katalogu oraz
+`Import and save ZIP files`. W części głównej są tytuł, trzy liczniki,
+ostrzeżenie interpretacyjne i pięć zakładek.
 
 | Zbiór | Co zawiera | Gdzie go widać |
 |---|---|---|
@@ -80,11 +85,13 @@ Po wyłączeniu porównywane są zapisane orientacje bez dopasowania obrotu.
 
 ### Browse saved catalogue
 
-Rozwija przeglądarkę zapisanej fotometrii. `Manufacturer contains` i
-`Model contains` wyszukują fragment tekstu bez rozróżniania wielkości liter.
-`Catalogue page` wybiera stronę, po maksymalnie 50 rekordów.
+Rozwija przeglądarkę zapisanej fotometrii. `Find manufacturer` zawęża listę
+marek, `Manufacturer` wybiera dokładną markę, a `Catalogue number or model
+contains` szuka fragmentu numeru lub opisu. `Catalogue page` jest listą
+rozwijaną istniejących stron, po maksymalnie 50 rekordów. Przy więcej niż
+1000 stron pojawia się dodatkowa lista zakresów stron.
 
-Tabela pokazuje ID, nazwę pliku, producenta, model i format. Pole
+Tabela pokazuje ID, markę i numer katalogowy albo dostępny opis. Pole
 `Add saved luminaires to comparison` dołącza wybrane rekordy do bieżącego
 zestawu. Wybór dotyczy bieżącej strony i filtrów. Nazwy otrzymują prefiks
 `[DB id]`, aby odróżnić identyczne nazwy różnych rekordów.
@@ -251,15 +258,15 @@ Tabela zawiera File, PC1, PC2, Cluster i Anomalous. Przycisk
 `Download ML results CSV` pobiera `ml_results.csv`. Zmiana zestawu zmienia
 projekcję, klastry i potencjalne anomalie; numer grupy nie jest trwałą kategorią.
 
-## 8. Open batch import — dolna część strony
+## 8. Import and save ZIP files — panel boczny
 
-Checkbox znajduje się pod stopką, poza trzema zakładkami. Otwiera formularz
+Checkbox znajduje się w panelu bocznym. Otwiera formularz
 trwałego importu. `Batch IES/LDT files` przyjmuje wiele pojedynczych plików,
 `Or multiple ZIP archives` wiele ZIP-ów. Należy użyć jednej z tych dróg.
 `Batch source / provenance` jest wymaganym opisem pochodzenia. Warto podać
 źródło, datę pozyskania i podstawę wykorzystania danych.
 
-`Import batch` rozpoczyna zapis. Dla pojedynczych IES/LDT widoczny jest pasek
+`Import and save to catalogue` rozpoczyna zapis. Dla pojedynczych IES/LDT widoczny jest pasek
 postępu po plikach, po zakończeniu tabela i `Download batch report`.
 Dla wielu ZIP-ów bieżący komunikat ma postać `Archive x/y: nazwa`. Aktualny
 wariant ZIP nie pokazuje paska postępu wewnątrz archiwum.
@@ -339,7 +346,7 @@ przekroje i zakres danych. Pobierz ranking i raport jakości.
 
 ### Zbudowanie trwałego katalogu
 
-Otwórz import na dole, wybierz pliki lub ZIP-y, opisz źródło i uruchom import.
+Otwórz import w panelu bocznym, wybierz pliki lub ZIP-y, opisz źródło i uruchom zapis.
 Sprawdź raport każdej partii. Następnie w panelu bocznym otwórz katalog,
 przefiltruj rekordy i dołącz tylko potrzebne pozycje do porównania.
 

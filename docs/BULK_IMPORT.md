@@ -1,5 +1,10 @@
 # Import wsadowy
 
+Aktualizacja interfejsu: w panelu bocznym zaznacz **Import and save ZIP files**.
+Po wybraniu archiwów i opisaniu źródła przycisk **Import and save to catalogue**
+rozpoczyna zapis. Sam wybór plików nie zapisuje ich do bazy. Podsumowanie z
+błędami wymaga sprawdzenia; nie jest ogłaszane jako całkowity sukces.
+
 ## Zestawy produktów z ZIP i trwały katalog
 
 Aktualizacja: przed importem ZIP uruchom migracje, w tym `006`:
@@ -79,9 +84,9 @@ ukończone partie pozostają zapisane. Automatyczne wznawianie kolejki nie jest
 jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie.
 
 Przed użyciem uruchom `python -m photolab.database` (migracja `004`).
-Po restarcie Streamlit zaznacz `Open batch import` na dole strony.
+Po restarcie Streamlit zaznacz `Import and save ZIP files` w panelu bocznym.
 Wybierz wiele IES/LDT albo wiele ZIP-ów, opisz pochodzenie zbioru i kliknij
-`Import batch`. Automatyczne próbki demonstracyjne nie są importowane.
+`Import and save to catalogue`. Automatyczne próbki demonstracyjne nie są importowane.
 
 Limity: 500 wpisów ZIP lub plików, 5 000 000 bajtów na plik, 100 000 000
 bajtów całej partii i rozpakowanego archiwum. ZIP jest czytany w pamięci,

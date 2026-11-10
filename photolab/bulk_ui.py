@@ -6,15 +6,17 @@ from .artifacts import artifact_root
 from .database import database_url, DatabaseError
 from .bulk import prepare_files, import_batch, batch_history
 from .zip_products import import_product_zip
+from .catalogue_controls import invalidate_catalogue_cache
 
 
 def render_bulk_import(version):
-    st.subheader('Batch import')
+    st.subheader('Import and save to catalogue')
+    st.caption('Selecting files does not save them. Enter a source and press the save button below.')
     st.caption('Up to 500 entries, 5 MB per file and 100 MB per batch. ZIP files are read without extraction. Each file is committed separately.')
     uploads = st.file_uploader('Batch IES/LDT files', type=['ies', 'ldt'], accept_multiple_files=True, key='batch_files')
     archives = st.file_uploader('Or multiple ZIP archives', type=['zip'], accept_multiple_files=True, key='batch_zips')
     description = st.text_input('Batch source / provenance', key='batch_description')
-    if st.button('Import batch', key='import_batch'):
+    if st.button('Import and save to catalogue', key='import_batch', type='primary'):
         try:
             if uploads and archives:
                 raise ValueError('Choose individual files or ZIP archives, not both.')
@@ -30,12 +32,19 @@ def render_bulk_import(version):
                         batch_id, rows, groups, skipped = import_product_zip(
                             database_url(), archive.getvalue(), artifact_root(),
                             f'{description.strip()} / {archive.name}', version)
+                        invalidate_catalogue_cache()
                         summaries.append(dict(archive=archive.name, batch_id=batch_id,
                             bundles=len(groups), photometry_files=len(rows) - len(skipped), skipped=len(skipped),
                             errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
                     except (ValueError, OSError, DatabaseError) as error:
+                        # A failed archive may already have committed some photometry.
+                        invalidate_catalogue_cache()
                         summaries.append(dict(archive=archive.name, error=str(error)))
                 st.dataframe(pd.DataFrame(summaries), hide_index=True)
+                if all(not item.get('error') and not item.get('errors') for item in summaries):
+                    st.success('Import completed and saved to the catalogue. Check the archive summary.')
+                else:
+                    st.warning('Some archives or files were not saved successfully. Check the archive summary and batch history.')
                 st.download_button('Download archive summary', pd.DataFrame(summaries).to_csv(index=False).encode('utf-8-sig'),
                                    file_name='archive_summary.csv', mime='text/csv')
                 return
@@ -43,6 +52,7 @@ def render_bulk_import(version):
             progress = st.progress(0.0)
             batch_id, rows = import_batch(database_url(), files, artifact_root(), description.strip(), version,
                                          progress=lambda done, total: progress.progress(done / total))
+            invalidate_catalogue_cache()
             st.success(f'Batch #{batch_id} finished. See per-file outcomes below.')
             st.dataframe(pd.DataFrame(rows), hide_index=True)
             st.download_button('Download batch report', pd.DataFrame(rows).to_csv(index=False).encode('utf-8-sig'),
