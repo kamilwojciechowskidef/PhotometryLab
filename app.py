@@ -22,7 +22,8 @@ from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
 from photolab.product_labels import product_label
-from photolab.catalogue_controls import BRAND_LIMIT, get_brands, get_count, invalidate_catalogue_cache, select_page
+from photolab.catalogue_controls import (BRAND_LIMIT, MAX_COMPARISON_FILES, add_to_comparison,
+                                         get_brands, get_count, invalidate_catalogue_cache, select_page)
 
 
 APP_VERSION = "0.1"
@@ -97,23 +98,16 @@ with st.sidebar:
                 choices = {row['file_id']: row for row in catalogue_rows}
                 selected_ids = st.multiselect(
                     "Choose saved luminaires on this page", list(choices),
+                    key='sidebar_select_page',
                     format_func=lambda file_id: f"{choices[file_id]['manufacturer']} · {choices[file_id].get('catalogue_number') or choices[file_id]['model'] or 'Unavailable'} · #{file_id}",
                 )
                 if st.button('Add selected to comparison', key='add_catalogue_selection'):
-                    new_ids = [file_id for file_id in selected_ids if file_id not in selected_catalogue]
-                    if len(selected_catalogue) + len(new_ids) > 20:
-                        st.warning('Select at most 20 saved photometry files for the local comparison.')
-                    elif not selected_ids:
-                        st.info('Choose at least one saved luminaire above first.')
-                    else:
-                        for file_id in new_ids:
-                            row = choices[file_id]
-                            selected_catalogue[file_id] = {
-                                'sha256': row['sha256'], 'filename': row['filename'],
-                                'label': f"#{file_id} · {row['manufacturer']} · {row.get('catalogue_number') or row['model'] or 'Unavailable'}",
-                            }
+                    try:
+                        added = add_to_comparison(selected_catalogue, selected_ids, choices)
                         session_state['select_catalogue_reference'] = selected_ids[0]
-                        st.success(f'{len(new_ids)} saved file(s) added to the comparison set.')
+                        st.success(f'{added} saved file(s) added to the comparison set.')
+                    except ValueError as error:
+                        st.warning(str(error))
                 st.caption('Choose entries, then press Add selected. Saved choices persist when changing page or filters.')
                 st.caption('Older entries may show the source description in place of a catalogue number.')
                 with st.expander('Show current page table'):
@@ -125,7 +119,7 @@ with st.sidebar:
             st.error(str(error))
 
     if selected_catalogue:
-        st.caption(f"Saved files in comparison: {len(selected_catalogue)} / 20")
+        st.caption(f"Saved files in comparison: {len(selected_catalogue)} / {MAX_COMPARISON_FILES}")
         for record in selected_catalogue.values():
             st.caption(record['label'])
         if st.button('Clear saved comparison set', key='clear_catalogue_selection'):
@@ -189,21 +183,68 @@ t0, t1, t2, t3, t4 = st.tabs(["Saved catalogue", "Comparison and ranking", "Cata
 with t0:
     st.subheader('Saved photometry catalogue')
     st.caption('Persistent catalogue from PostgreSQL. ZIP imports and individually saved files remain available after restarting the app.')
+    if st.checkbox('Show folder import progress', value=False, key='show_import_progress'):
+        from photolab.import_monitor_ui import render_import_monitor
+        render_import_monitor(st)
+    if selected_catalogue:
+        st.subheader(f'Saved comparison set ({len(selected_catalogue)} / {MAX_COMPARISON_FILES})')
+        st.caption('Selection belongs to this browser session. Uploaded and demonstration files are managed separately.')
+        remove_ids = st.multiselect('Remove saved files from comparison', list(selected_catalogue),
+            format_func=lambda file_id: selected_catalogue[file_id]['label'], key='main_remove_selection')
+        if st.button('Remove selected from comparison', key='main_remove_catalogue'):
+            if not remove_ids:
+                st.info('Choose one or more saved files to remove.')
+            else:
+                for file_id in remove_ids:
+                    selected_catalogue.pop(file_id, None)
+                    if str(session_state.get('ref_file', '')).startswith(f'[DB {file_id}] '):
+                        session_state.pop('ref_file', None)
+                session_state.pop('select_catalogue_reference', None)
+                st.rerun()
+    saved_message = session_state.pop('main_catalogue_message', None)
+    if saved_message:
+        st.success(saved_message)
     try:
+        if st.button('Refresh saved catalogue', key='main_refresh_catalogue'):
+            invalidate_catalogue_cache()
         main_url = database_url()
-        main_total = get_count(main_url)
-        st.caption(f'{main_total:,} saved photometry file(s).')
-        catalogue_page_main = select_page(st, main_total, key='main_page')
-        main_rows = list_catalogue(main_url, limit=50, offset=(int(catalogue_page_main) - 1) * 50)
+        main_brand_search = st.text_input('Find manufacturer in catalogue', key='main_brand_search')
+        main_brands = get_brands(main_url, main_brand_search)
+        if len(main_brands) == BRAND_LIMIT:
+            st.caption('Showing the first 500 manufacturers. Refine the search to find others.')
+        if main_brand_search.strip() and not main_brands:
+            st.info('No manufacturers match the search. Clear it to see the full list.')
+        main_brand = st.selectbox('Catalogue manufacturer', [None, *main_brands],
+            key='main_catalogue_brand', format_func=lambda brand: brand if brand is not None else 'All manufacturers')
+        main_model = st.text_input('Catalogue number or model', key='main_catalogue_model')
+        main_total = get_count(main_url, main_brand or '', main_model)
+        st.caption(f'{main_total:,} matching photometry file(s).')
+        catalogue_page_main = select_page(st, main_total, key=f'main_page_{main_brand}_{main_model}')
+        main_rows = list_catalogue(main_url, manufacturer=main_brand or '',
+                                   manufacturer_exact=bool(main_brand), model=main_model,
+                                   limit=50, offset=(int(catalogue_page_main) - 1) * 50)
         if main_rows:
             st.dataframe(pd.DataFrame([{
                 'ID': row['file_id'], 'Brand': row['manufacturer'],
                 'Catalogue / model': row.get('catalogue_number') or row['model'] or 'Unavailable',
                 'Format': row['format'],
             } for row in main_rows]), width='stretch', hide_index=True)
-            st.caption('Select a saved entry for comparisons through Browse saved catalogue in the sidebar. '
-                       'Each IES or LDT is a separate photometry entry.')
             main_choices = {row['file_id']: row for row in main_rows}
+            main_selected = st.multiselect('Choose saved luminaires on this catalogue page', list(main_choices),
+                key=f'main_choose_{main_brand}_{main_model}_{catalogue_page_main}',
+                format_func=lambda file_id: f"#{file_id} · {main_choices[file_id]['manufacturer']} · "
+                    f"{main_choices[file_id].get('catalogue_number') or main_choices[file_id]['model'] or 'Unavailable'}")
+            if st.button('Add selected catalogue files to comparison', key='main_add_catalogue'):
+                try:
+                    added = add_to_comparison(selected_catalogue, main_selected, main_choices)
+                    session_state['select_catalogue_reference'] = main_selected[0]
+                    session_state['main_catalogue_message'] = f'{added} saved file(s) added to the comparison set.'
+                    st.rerun()
+                except ValueError as error:
+                    st.warning(str(error))
+            st.caption('Select up to 20 saved photometry files. Selection persists across pages and sidebar filters. '
+                       'Only files that pass quality checks are available for comparison. '
+                       'Each IES and LDT remains a separate entry.')
             main_file = st.selectbox('Saved photometry details', list(main_choices),
                 format_func=lambda key: f"#{key} · {main_choices[key]['manufacturer']} · "
                                         f"{main_choices[key].get('catalogue_number') or main_choices[key]['model'] or 'Unavailable'}",
@@ -234,7 +275,7 @@ with t0:
                 except (DatabaseError, ArtifactError, OSError, ValueError) as error:
                     st.warning(str(error))
         else:
-            st.info('No saved photometry on this page. Import a ZIP or save uploaded files first.')
+            st.info('No saved photometry matches these filters on this page.')
     except DatabaseError as error:
         st.info(f'Catalogue unavailable: {error}')
 

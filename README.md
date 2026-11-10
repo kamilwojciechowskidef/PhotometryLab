@@ -8,6 +8,13 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+`Saved catalogue` zawiera read-only podgląd domyślnego checkpointu workera ZIP;
+znaczenie liczników i ograniczenia opisuje [import wsadowy](docs/BULK_IMPORT.md).
+
+W głównym `Saved catalogue` można wybrać producenta z listy, filtrować numer
+katalogowy, odświeżyć dane po imporcie z osobnego procesu oraz dodawać i usuwać
+pojedyncze oprawy w zestawie porównawczym sesji.
+
 - [Import ZIP i trwały katalog](docs/BULK_IMPORT.md) — migracja `006`, zestawy
   IES/LDT/JSON/JPG/PNG, centralny katalog i wymagania przechowywania danych.
 
@@ -15,7 +22,8 @@ The application has a Polish interface and runs **locally**. It requires no acco
   oznaczenia w interfejsie i zgodność z wcześniej zapisanymi rekordami.
 
 - [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
-  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
+  `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki, schemat
+  szerokości w kolejnych odległościach i luks na osi.
 
 Multiple ZIP uploads and sequential directory import are described in
 [Import wsadowy](docs/BULK_IMPORT.md).

@@ -6,6 +6,9 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Schemat szerokości wiązki i natężenia na osi w kolejnych odległościach;
+  pozostaje niezależna walidacja na danych referencyjnych.
+
 - [x] Korekta generatora asymetrycznego demo: spójność obu biegunów,
   maksimum odchylonej wiązki i regresja działania diagnostyki FWHM/luksów.
   Nie stanowi to walidacji danych producentów ani pełnego audytu raportu jakości.
@@ -25,6 +28,17 @@ pozostają do wykonania.
 **Warunek ukończenia:** poprawność kluczowych obliczeń potwierdzona testami i co najmniej kilkoma ręcznie zweryfikowanymi plikami referencyjnymi; wszelkie braki dokumentowane.
 
 ## P1 — katalog i przetwarzanie większej skali
+
+- [x] Dodawanie opraw do porównań bezpośrednio z głównego katalogu i usuwanie
+  pojedynczych pozycji z zestawu sesji; wspólny limit z panelem bocznym.
+
+- [x] Pierwszy panel obserwacji workera ZIP w Streamlit: read-only checkpointy,
+  statusy i raport pojedynczej partii. Nie steruje workerem i nie szacuje czasu.
+- [ ] Trwały rejestr kompletnej kolejki oraz wiarygodne łączne postępy i kontrola
+  aktywności workera; panel nie obejmuje niestandardowych checkpointów.
+
+- [x] Wybór producenta, wyszukiwanie numeru katalogowego i odświeżanie także
+  bezpośrednio w głównej zakładce `Saved catalogue`.
 
 - [x] Czytelne sterowanie zapisem ZIP w panelu bocznym, lista producentów,
   wybór istniejących stron i prezentacja numerów katalogowych / opisów.

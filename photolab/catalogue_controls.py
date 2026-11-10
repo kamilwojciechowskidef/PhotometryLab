@@ -7,6 +7,27 @@ from .database import count_catalogue, list_catalogue_manufacturers
 PAGE_SIZE = 50
 PAGES_PER_RANGE = 1000
 BRAND_LIMIT = 500
+MAX_COMPARISON_FILES = 20
+
+
+def add_to_comparison(selection, selected_ids, choices):
+    """Add page entries atomically to a session selection; retain DB IDs and hashes."""
+    if not selected_ids:
+        raise ValueError('Choose at least one saved luminaire first.')
+    if any(file_id not in choices for file_id in selected_ids):
+        raise ValueError('The catalogue page changed. Select the files again.')
+    new_ids = list(dict.fromkeys(file_id for file_id in selected_ids if file_id not in selection))
+    if len(selection) + len(new_ids) > MAX_COMPARISON_FILES:
+        raise ValueError(f'Select at most {MAX_COMPARISON_FILES} saved photometry files for the local comparison.')
+    records = {}
+    for file_id in new_ids:
+        row = choices[file_id]
+        records[file_id] = {
+            'sha256': row['sha256'], 'filename': row['filename'],
+            'label': f"#{file_id} · {row['manufacturer']} · {row.get('catalogue_number') or row['model'] or 'Unavailable'}",
+        }
+    selection.update(records)
+    return len(new_ids)
 
 
 @lru_cache(maxsize=128)

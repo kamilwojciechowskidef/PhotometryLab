@@ -1,5 +1,21 @@
 # Diagnostyka fotometryczna pojedynczej oprawy
 
+## Schemat wiązki w kolejnych odległościach
+
+W sekcji **Beam projection and axial illuminance** schemat pokazuje pięć
+odległości wyznaczonych przez suwak, szerokość wybranego przekroju oraz
+natężenie oświetlenia na osi. Domyślnie są to 2, 4, 6, 8 i 10 m. Granice
+są projekcją promieni odpowiadających połowie maksymalnej światłości danego
+przekroju, a luks obliczany jest jako I osiowe / d². Dla rozsyłu asymetrycznego
+przekrój zachowuje przesunięcie względem osi. Okrągłe symbole i oznaczenie
+średnicy stosowane są tylko dla symetrii obrotowej; same symbole są poglądowe.
+Skale osi są niezależne. Nie jest to mapa natężenia ani kontur połowy
+natężenia oświetlenia. Gdy brakuje granic, schemat może pokazać same luksy;
+gdy brakuje przeliczenia na cd, wartości luksów są niedostępne. Strumień
+z nagłówka nie musi być strumieniem oprawy, dlatego schemat go nie wyświetla.
+Obliczenie zakłada źródło punktowe w polu dalekim; wiarygodność tego
+przybliżenia wymaga osobnej oceny.
+
 Stan: 10 listopada 2026 r. Wersja obliczeń:
 `diagnostics-v1-native-linear-half-maximum`.
 

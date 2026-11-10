@@ -90,6 +90,57 @@ def beam_figure(result, rows):
     return figure
 
 
+def beam_schematic_figure(rows, plane, radial=False):
+    """Illustrate measured-section projections and independent on-axis estimates."""
+    figure = go.Figure()
+    label = f'C{plane}-C{plane + 180}' if plane is not None else None
+    available = label is not None and all(row[f'{label} width [m]'] is not None for row in rows)
+    distances = [row['Distance [m]'] for row in rows]
+    extent = 1.0
+    if available:
+        left = [row[f'{label} left [m]'] for row in rows]
+        right = [row[f'{label} right [m]'] for row in rows]
+        extent = max(max(abs(value) for value in left + right), 0.01)
+        figure.add_trace(go.Scatter(
+            x=[0] + distances + distances[::-1] + [0],
+            y=[0] + right + left[::-1] + [0], mode='lines',
+            line=dict(color='#0284c7', width=2), fill='toself',
+            fillcolor='rgba(125, 190, 220, 0.30)', name=label,
+            hoverinfo='skip'))
+        centered = radial and all(np.isclose(a, -b, rtol=1e-6, atol=1e-9)
+                                  for a, b in zip(left, right))
+        for distance, lo, hi, row in zip(distances, left, right, rows):
+            if centered:
+                radius = distances[0] * 0.13
+                figure.add_shape(type='circle', x0=distance-radius, x1=distance+radius,
+                                 y0=lo, y1=hi, line=dict(color='#0284c7', width=1),
+                                 fillcolor='rgba(255,255,255,0.3)')
+            else:
+                figure.add_shape(type='line', x0=distance, x1=distance, y0=lo, y1=hi,
+                                 line=dict(color='#0284c7', width=2))
+            description = 'Diameter' if centered else 'Section width'
+            figure.add_annotation(x=distance, y=hi + extent * .12, showarrow=False,
+                                  text=f"{description}<br>{row[f'{label} width [m]']:.2f} m",
+                                  font=dict(size=11, color='#172b4d'))
+    figure.add_trace(go.Scatter(
+        x=distances, y=[0] * len(rows), mode='lines+markers', name='Optical axis',
+        line=dict(color='#475569', dash='dot'), marker=dict(size=6),
+        customdata=[[row['Axial illuminance [lx]']] for row in rows],
+        hovertemplate='Distance: %{x:.2f} m<extra>Optical axis</extra>'))
+    for row in rows:
+        lux = row['Axial illuminance [lx]']
+        value = 'unavailable' if lux is None else f'{lux:.2f} lx'
+        figure.add_annotation(x=row['Distance [m]'], y=-extent * 1.25,
+                              text=f'On axis<br>{value}', showarrow=False,
+                              font=dict(size=11, color='#172b4d'))
+    _readable_layout(figure)
+    figure.update_layout(title='Beam at selected distances', height=440, showlegend=False,
+                         xaxis=dict(title='Axial distance [m]', tickvals=distances,
+                                    range=[-distances[0] * .25, distances[-1] + distances[0] * .35]),
+                         yaxis=dict(title='Transverse position [m]', range=[-extent * 1.55, extent * 1.55]))
+    return figure
+
+
 def render_diagnostics(st, items):
     st.subheader('Single-luminaire photometric diagnostics')
     if not items:
@@ -145,6 +196,21 @@ def render_diagnostics(st, items):
     maximum = st.slider('Maximum axial distance [m]', min_value=1.0, max_value=50.0,
                         value=10.0, step=1.0, key='diagnostic_distance')
     rows = distance_rows(result, np.linspace(maximum / 5, maximum, 5))
+    available_planes = [section.plane for section in result.sections
+                        if rows[0][f'C{section.plane}-C{section.plane + 180} width [m]'] is not None]
+    if available_planes or result.axis_cd is not None:
+        plane = None
+        if available_planes:
+            plane = st.selectbox('Section for beam diagram', available_planes,
+                                 format_func=lambda p: f'C{p}-C{p + 180}', key='diagnostic_diagram_plane')
+        st.plotly_chart(beam_schematic_figure(rows, plane, item.symmetry == 'radial'),
+                        width='stretch', theme=None)
+        st.caption('The diagram is schematic; axis scales are independent. Widths project the '
+                   'half-intensity boundaries in the selected section, not a half-illuminance '
+                   'contour. Circular symbols are illustrative and used only for radial symmetry. '
+                   'Illuminance is estimated on the axis, not necessarily at the brightest point.')
+        if not available_planes:
+            st.info('Beam width is unavailable; only the axial illuminance is shown.')
     if any(row[key] is not None for row in rows[:1] for key in row if 'width' in key):
         st.plotly_chart(beam_figure(result, rows), width='stretch', theme=None)
         st.caption('Two plane sections, not a circular footprint. Axis scales are independent; '

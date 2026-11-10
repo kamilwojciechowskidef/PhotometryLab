@@ -1,5 +1,11 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+W zakładce **Saved catalogue** opcja **Show folder import progress** otwiera
+odczyt statusów importu folderowego. Przycisk **Refresh import progress**
+odświeża panel ręcznie. To podgląd domyślnego checkpointu bieżącej bazy, a nie
+sterowanie workerem; nie pokazuje całkowitej liczby ZIP-ów ani czasu pozostałego.
+Znaczenie statusów i ograniczenia opisano w [BULK_IMPORT.md](BULK_IMPORT.md).
+
 Aktualizacja nawigacji: import ZIP znajduje się teraz w panelu bocznym pod
 **Import and save ZIP files**; zapis rozpoczyna **Import and save to catalogue**.
 Przeglądarka używa listy producentów i stron. Starsze wpisy mogą pokazywać opis
@@ -10,6 +16,20 @@ zapisane fotometrie bez zaznaczania opcji w panelu bocznym. Po wybraniu pozycji
 **Show associated ZIP assets** pokazuje jej zestawy z nowych importów, JSON
 i dostępne zdjęcie. Wymaga migracji `006`; starsze importy nie otrzymują
 automatycznie powiązań. Szczegóły ograniczeń: [BULK_IMPORT.md](BULK_IMPORT.md).
+
+W głównej zakładce katalogu `Find manufacturer in catalogue` zawęża listę,
+`Catalogue manufacturer` wybiera markę, a `Catalogue number or model` filtruje
+numer albo opis. `Refresh saved catalogue` odświeża listę i licznik w trakcie
+importu z osobnego procesu. Te filtry nie zmieniają niezależnych filtrów
+przeglądarki w panelu bocznym.
+
+W głównym katalogu **Choose saved luminaires on this catalogue page** pozwala
+wybrać wpisy z bieżącej strony, a **Add selected catalogue files to comparison**
+dodaje je do zestawu. Można powtórzyć wybór na kolejnych stronach i przy innych
+filtrach. Pierwsza wybrana pozycja zostaje proponowanym wzorcem, jeśli jest
+gotowa do porównania. Sekcja **Saved comparison set** umożliwia usuwanie
+konkretnych wpisów bez czyszczenia całego zestawu. Wybór jest wspólny z panelem
+bocznym, ograniczony do 20 zapisanych fotometrii i trwa tylko w bieżącej sesji.
 
 Aktualizacja 10 listopada 2026: dodano czwartą zakładkę **Photometric diagnostics**.
 Wybierz jedną oprawę w **Diagnostic luminaire**. **Diagnostic intensity scale**

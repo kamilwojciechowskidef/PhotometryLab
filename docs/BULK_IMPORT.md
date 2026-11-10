@@ -1,5 +1,30 @@
 # Import wsadowy
 
+## Podgląd postępu workera w Streamlit
+
+W zakładce **Saved catalogue** zaznacz **Show folder import progress** i użyj
+**Refresh import progress**. Panel czyta domyślny checkpoint SQLite w trybie
+tylko do odczytu, a opcjonalne szczegóły partii z PostgreSQL w sesji read-only.
+Nie uruchamia, nie zatrzymuje i nie wznawia workera. Odświeżanie jest ręczne.
+
+Liczniki obejmują wszystkie wpisy domyślnego checkpointu pasujące do bieżącego
+celu PostgreSQL, również z wcześniejszych uruchomień. To wpisy ścieżka + hash,
+nie liczba unikalnych produktów ani łączna liczba ZIP-ów w katalogu. Worker
+rejestruje archiwum dopiero po jego rozpoczęciu, dlatego nie znamy tu liczby
+oczekujących, procentu ani czasu zakończenia. `running` może oznaczać
+przerwanie — panel nie potwierdza działania procesu.
+
+Liczby `new`, `duplicate`, `errors` pochodzą z rozpoznanych podsumowań
+zakończonych archiwów i oznaczają wyniki operacji importu, nie unikalne pliki.
+Starsze lub niezrozumiałe podsumowania są jawnie pomijane w tych sumach.
+Tabela pokazuje do 50 ostatnich wpisów, skrót SHA-256 i znany numer partii;
+godziny SQLite są w UTC. Szczegóły pojedynczej partii pobierane są z bazy.
+
+Panel nie widzi importów sprzed checkpointów, innej bazy, innego serwera ani
+pliku przekazanego przez `--state-file`. Po awarii część plików może być już
+zapisana mimo braku numeru partii w checkpoincie. Nie używaj stanu panelu jako
+automatycznego upoważnienia do ponawiania; sprawdź historię i proces workera.
+
 Aktualizacja interfejsu: w panelu bocznym zaznacz **Import and save ZIP files**.
 Po wybraniu archiwów i opisaniu źródła przycisk **Import and save to catalogue**
 rozpoczyna zapis. Sam wybór plików nie zapisuje ich do bazy. Podsumowanie z
@@ -38,9 +63,9 @@ Zakładka **Saved catalogue** jest dostępna po uruchomieniu aplikacji i pokazuj
 fotometrie zapisane w PostgreSQL, bez zaznaczania opcji w panelu bocznym.
 Wybierz rekord i zaznacz **Show associated ZIP assets**, aby obejrzeć powiązane
 pliki, JSON i jedno zdjęcie. Istniejące rekordy sprzed tej migracji nie dostają
-automatycznie powiązań do sidecarów. Dla analiz wybór pliku z katalogu nadal
-odbywa się przez **Browse saved catalogue**; centralny widok nie dodaje całej
-bazy do bieżącej sesji.
+automatycznie powiązań do sidecarów. Do analiz można wybrać pozycje z głównego
+katalogu albo przez **Browse saved catalogue** w panelu bocznym. Do bieżącej
+sesji trafiają wyłącznie wybrane pliki, a nie cała baza.
 
 **Ważne ograniczenie:** zapis fotometrii odbywa się w osobnych transakcjach,
 przed transakcją powiązań ZIP. Awaria na tym etapie może zostawić fotometrię
