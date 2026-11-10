@@ -6,6 +6,10 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Korekta generatora asymetrycznego demo: spójność obu biegunów,
+  maksimum odchylonej wiązki i regresja działania diagnostyki FWHM/luksów.
+  Nie stanowi to walidacji danych producentów ani pełnego audytu raportu jakości.
+
 Pierwszy przyrost: parser LDT odrzuca niepełne zakresy C dla `Isym=2/3/4`.
 Dodano cztery przypadki regresyjne odrzucania brakujących granic oraz trzy
 przypadki poprawnych nierównomiernych siatek, obejmujące odbicia i C=0/360°.

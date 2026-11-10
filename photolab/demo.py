@@ -18,7 +18,15 @@ def _pattern(kind: str, gamma: np.ndarray, c: np.ndarray) -> np.ndarray:
     if kind == "oval":
         return 820 * np.exp(-0.5 * (g / (27 + 11 * np.cos(2 * az))) ** 2)
     if kind == "asymmetric":
-        return 780 * np.exp(-0.5 * ((g - 15 * (np.cos(az)+1)) / 25) ** 2)
+        # Gaussian in spherical angular distance from a beam axis tilted
+        # 30 degrees towards C=0. At either pole the direction is independent
+        # of C; shifting gamma by a C-dependent offset would violate this.
+        gamma_rad = np.deg2rad(g)
+        tilt = np.deg2rad(30.0)
+        cosine = (np.cos(gamma_rad) * np.cos(tilt)
+                  + np.sin(gamma_rad) * np.sin(tilt) * np.cos(az))
+        separation_deg = np.rad2deg(np.arccos(np.clip(cosine, -1.0, 1.0)))
+        return 780 * np.exp(-0.5 * (separation_deg / 25) ** 2)
     raise KeyError(kind)
 
 
@@ -54,12 +62,12 @@ def make_ldt(label: str, kind: str, luminous_flux_lm: int = 3500) -> bytes:
 
 def samples() -> dict[str, bytes]:
     return {
-        "DEMO_01_Spot_IES.ies": make_ies("Spot 22°", "narrow"),
-        "DEMO_02_SpotPodobny_IES.ies": make_ies("Spot 24°", "narrow_similar"),
-        "DEMO_03_Downlight_IES.ies": make_ies("Downlight 47°", "wide"),
+        "DEMO_01_Spot_IES.ies": make_ies("Spot (Gaussian sigma 22 deg)", "narrow"),
+        "DEMO_02_SpotPodobny_IES.ies": make_ies("Spot (Gaussian sigma 24 deg)", "narrow_similar"),
+        "DEMO_03_Downlight_IES.ies": make_ies("Downlight (Gaussian sigma 47 deg)", "wide"),
         "DEMO_04_Batwing_IES.ies": make_ies("Panel batwing", "batwing"),
         "DEMO_05_Oval_IES.ies": make_ies("Oval distribution", "oval"),
-        "DEMO_06_Asymmetry_IES.ies": make_ies("Asymmetric distribution", "asymmetric"),
+        "DEMO_06_Asymmetry_IES.ies": make_ies("Tilted beam (30 deg, Gaussian sigma 25 deg)", "asymmetric"),
         "DEMO_07_LDT_Spot.ldt": make_ldt("LDT spot version", "narrow"),
         "DEMO_08_LDT_Wide.ldt": make_ldt("LDT downlight version", "wide"),
     }

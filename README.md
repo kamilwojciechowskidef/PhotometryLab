@@ -56,6 +56,11 @@ If `py -3` fails to launch the interpreter, check your Python installation and t
 
 ## Current features
 
+Korekta demo (2026-11-10): próbka asymetryczna używa odległości kątowej od
+odchylonej osi wiązki i zachowuje spójność biegunów. Parametry sigma w nazwach
+próbek nie oznaczają FWHM. Opis i wpływ na odtwarzalność benchmarków:
+[diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md).
+
 1. Import multiple files and report errors rather than silently skipping files.
 2. Read IES LM-63 Type C files (`TILT=NONE`) and EULUMDAT LDT files (`Isym` symmetry codes 0–4).
 3. Expand distribution symmetry and interpolate onto a common grid: C from 0° to 350° in 10° steps, γ from 0° to 90° in 5° steps.

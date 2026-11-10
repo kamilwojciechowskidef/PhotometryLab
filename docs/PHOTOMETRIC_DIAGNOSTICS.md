@@ -139,6 +139,33 @@ pochodzeniu. Sam plik CSV z nazwą źródła nie stanowi pełnego manifestu bada
 
 ## 6. Testy i dalsza walidacja
 
+### Korekta syntetycznej próbki asymetrycznej (10 listopada 2026)
+
+`DEMO_06_Asymmetry_IES.ies` w aplikacji (plik `examples/DEMO_06_Asymetria_IES.ies`
+w repozytorium) opisuje obecnie wiązkę Gaussa odchyloną o 30° w kierunku C0.
+Jej światłość jest funkcją odległości kątowej δ od osi wiązki:
+
+```text
+cos(δ) = cos(γ) cos(30°) + sin(γ) sin(30°) cos(C)
+I = 780 · exp(−0,5 · (δ / 25°)²) cd
+```
+
+W obliczeniach trygonometrycznych kąty są przeliczane na radiany. Ten wzór
+wynika z iloczynu skalarnego wektorów kierunkowych; na biegunach γ=0° i 180°
+wynik nie zależy od C. Poprzednia próbka przesuwała gamma o wartość zależną
+od C i naruszała tę własność. Był to błąd danych demonstracyjnych.
+
+Maksimum pozostaje 780 cd przy C0/γ30°, a światłość na osi γ=0° wynosi
+około 379,67 cd. Teoretyczne FWHM przekroju przez oś wiązki wynosi
+`2√(2 ln 2) · 25° ≈ 58,87°`; wynik z pliku zależy dodatkowo od interpolacji
+siatki co 10°. Sigma w nazwach innych próbek również nie jest kątem FWHM.
+
+Poprawiono generator aplikacji oraz przykład w `examples`. Wcześniej zapisane
+pliki i rekordy PostgreSQL nie są automatycznie zmieniane. Zmieniają się bajty
+i hash nowo wygenerowanej próbki oraz wyniki benchmarków wykorzystujących ją.
+Nie należy porównywać wyników eksperymentów z różnymi wersjami generatora
+bez odnotowania wersji kodu. Zabezpieczenie niespójności osi pozostaje aktywne.
+
 Testy syntetyczne sprawdzają m.in. znane kąty przecięć, niesymetryczne szerokości,
 wiązki węższe niż krok rankingu, znane luksometryczne wartości I/d², konwersję
 cd/klm, brak ekstrapolacji, horyzont, kilka lobów, niezgodną oś i symetrię C.
