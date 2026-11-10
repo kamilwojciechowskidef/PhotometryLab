@@ -6,6 +6,9 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Przygotowanie workera ZIP z punktem wznowienia i zapisem plików
+  towarzyszących. Próba na bazie i walidacja wielkoskalowa pozostają do wykonania.
+
 - [x] Korekta generatora asymetrycznego demo: spójność obu biegunów,
   maksimum odchylonej wiązki i regresja działania diagnostyki FWHM/luksów.
   Nie stanowi to walidacji danych producentów ani pełnego audytu raportu jakości.

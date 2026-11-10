@@ -1,5 +1,39 @@
 # Import wsadowy
 
+## Przygotowany worker katalogów producentów
+
+`photolab.import_worker` przeszukuje podkatalogi, importuje jeden ZIP naraz
+i zapisuje punkt wznowienia w lokalnym SQLite. Po ukończeniu ZIP-a ponowne
+uruchomienie pomija go, jeżeli rozmiar i czas modyfikacji nie uległy zmianie.
+Błędne ZIP-y są ponawiane; częściowo zapisane partie mogą pozostać w bazie.
+Przerwanie po zapisaniu partii, lecz przed punktem wznowienia, również może
+utworzyć ponowną partię i aliasy; fotometria jest deduplikowana po SHA-256.
+
+Worker zapisuje JPG/JPEG/PNG i JSON w prywatnym magazynie, a ich nazwy, hashe
+i identyfikator partii w tabeli `photolab.archive_assets` (migracja `006`).
+Wspólna nazwa w ZIP-ie pozwala powiązać pliki, jednak obecny interfejs nie
+wyświetla jeszcze zdjęć ani danych z JSON. Raport starego importu może oznaczać
+te pliki jako `skipped`, ponieważ zapisuje je osobny etap workera. Pliki
+odrzucone przez parser pozostają w raporcie; ukończony ZIP nie oznacza, że
+każdy IES/LDT nadaje się do porównania.
+
+Po wykonaniu kopii zapasowej i zastosowaniu migracji można sprawdzić niewielką
+próbę, korzystając z osobnego checkpointu:
+
+```powershell
+.venv\Scripts\python.exe -m photolab.database
+.venv\Scripts\python.exe -m photolab.import_worker "C:\Users\kamil\Downloads\ies_mass_data\zip" --source "Lokalne archiwa producentów" --checkpoint data\private\test-import.sqlite3 --limit 2
+```
+
+To polecenie faktycznie zapisuje dane w skonfigurowanej bazie. Docelowy import
+uruchamia się bez `--limit`, z osobnym checkpointem. Po wyczyszczeniu bazy lub
+magazynu trzeba użyć nowego checkpointu, gdyż poprzedni oznacza ZIP-y jako
+ukończone. Zmiana rozmiaru lub czasu modyfikacji ZIP-a powoduje jego ponowny
+import. Checkpoint nie wykrywa podmiany treści z zachowaniem obu tych wartości.
+Nie uruchamiaj dwóch workerów z tym samym checkpointem. Nie usuwaj archiwów
+źródłowych. Walidacja większego importu, obsługa awarii PostgreSQL, wydajność
+przy 28 tys. ZIP-ów i podgląd zdjęć wymagają dalszego sprawdzenia.
+
 ## Wiele ZIP-ów
 
 Uploader ZIP pozwala wybrać wiele archiwów. Łączny rozmiar uploadu jest
