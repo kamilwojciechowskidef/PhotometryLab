@@ -20,6 +20,7 @@ class Photometry:
     power_w: Optional[float] = None
     source_flux_lm: Optional[float] = None
     warnings: list[str] = field(default_factory=list)
+    catalogue_number: Optional[str] = None  # Source catalogue number, never a file ID.
 
     @property
     def covers_downward(self) -> bool:

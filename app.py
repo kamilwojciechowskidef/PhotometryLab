@@ -21,6 +21,7 @@ from photolab.indexing import rank_catalogue
 from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
 from photolab.quality import assess_quality, rejected_file_report
+from photolab.product_labels import product_label
 
 
 APP_VERSION = "0.1"
@@ -84,7 +85,7 @@ with st.sidebar:
                 choices = {row['file_id']: row for row in catalogue_rows}
                 selected_ids = st.multiselect(
                     "Add saved luminaires to comparison", list(choices),
-                    format_func=lambda file_id: f"#{file_id} · {choices[file_id]['manufacturer']} · {choices[file_id]['model']} · {choices[file_id]['filename']}",
+                    format_func=lambda file_id: f"#{file_id} · {choices[file_id]['manufacturer']} · {choices[file_id].get('catalogue_number') or choices[file_id]['model']} · {choices[file_id]['filename']}",
                 )
                 st.caption("Selection applies to the current page and filters. Up to 50 records per page.")
                 loaded_hashes = {identify_file(content).sha256 for content in payload.values()}
@@ -140,7 +141,9 @@ with t4:
 
 with t1:
     if eligible:
-        selected = st.selectbox("Reference luminaire", [i.filename for i in eligible], key="ref_file")
+        eligible_by_filename = {i.filename: i for i in eligible}
+        selected = st.selectbox("Reference luminaire", list(eligible_by_filename), key="ref_file",
+                                format_func=lambda name: product_label(eligible_by_filename[name]))
         ref = next(i for i in eligible if i.filename == selected)
         if st.button("Search indexed catalogue", key="search_indexed_catalogue"):
             try:
@@ -148,6 +151,8 @@ with t1:
                 indexed_df = pd.DataFrame([{
                     "Catalogue ID": file_id,
                     "Candidate": score.filename,
+                    "Brand": score.manufacturer or "unavailable",
+                    "Catalogue number": score.catalogue_number or "unavailable",
                     "Cosine (1 = identical)": round(score.cosine, 5),
                     "RMSE (0 = identical)": round(score.rmse, 5),
                     "Rotation [°]": score.rotation_deg,
@@ -171,6 +176,7 @@ with t1:
         results = find_similar(ref, eligible, allow_rotation)
         result_df = pd.DataFrame([{
             "Rank": no + 1, "Candidate": r.filename,
+            "Brand": r.manufacturer or "unavailable", "Catalogue number": r.catalogue_number or "unavailable",
             "Cosine (1 = identical)": round(r.cosine, 5), "RMSE (0 = identical)": round(r.rmse, 5),
             "Rotation [°]": r.rotation_deg,
         } for no, r in enumerate(results)])
@@ -179,7 +185,8 @@ with t1:
         csv_data = result_df.to_csv(index=False, sep=";").encode("utf-8-sig")
         st.download_button("Download ranking CSV", csv_data, file_name="photometry_ranking.csv",
                            mime="text/csv")
-        candidate_name = st.selectbox("Compare with candidate", result_df["Candidate"].tolist())
+        candidate_name = st.selectbox("Compare with candidate", result_df["Candidate"].tolist(),
+                                      format_func=lambda name: product_label(eligible_by_filename[name]))
         cand = next(i for i in eligible if i.filename == candidate_name)
         score = compare(ref, cand, allow_rotation)
         col_a, col_b, col_c = st.columns(3)
@@ -218,6 +225,7 @@ with t2:
             "Ready to compare": "yes" if report.comparison_ready else "no",
             "Format": item.format if item is not None else "unavailable — file rejected",
             "Manufacturer": item.manufacturer if item is not None else "unavailable",
+            "Catalogue number": item.catalogue_number or "unavailable" if item is not None else "unavailable",
             "Model": item.luminaire if item is not None else "unavailable",
             "C planes": len(item.c_angles) if item is not None else None,
             "Gamma angles": len(item.gamma_angles) if item is not None else None,

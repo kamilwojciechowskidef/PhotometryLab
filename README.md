@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Marka i numer katalogowy](docs/PRODUCT_METADATA.md) — odczyt z IES/LDT,
+  oznaczenia w interfejsie i zgodność z wcześniej zapisanymi rekordami.
+
 - [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
   `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
 

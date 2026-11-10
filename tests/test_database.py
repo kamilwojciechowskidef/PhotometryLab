@@ -34,14 +34,16 @@ class FakeCursor:
 
 
 def test_catalogue_filters_are_parameters_and_results_are_bounded(monkeypatch):
-    cursor = FakeCursor([(5, 'same.ies', 'Example', 'Lamp', 'IES', 'a' * 64)])
+    cursor = FakeCursor([(5, 'same.ies', 'Example', 'Lamp', 'IES', 'a' * 64, 'CAT-123')])
     monkeypatch.setattr('photolab.database.psycopg.connect', lambda *a, **k: FakeConnection(cursor))
     rows = list_catalogue('unused', manufacturer="O'Reilly", model='100%', offset=50)
     assert rows[0]['file_id'] == 5
+    assert rows[0]['catalogue_number'] == 'CAT-123'
     sql, params = cursor.calls[0]
     assert params == ("O'Reilly", '100%', 50, 50)
     assert "O'Reilly" not in sql
     assert 'LIMIT %s OFFSET %s' in sql
+    assert "p.data->>'catalogue_number'" in sql
 
 
 def test_catalogue_rejects_unbounded_request():

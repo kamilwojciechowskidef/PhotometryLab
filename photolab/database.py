@@ -296,15 +296,16 @@ def list_catalogue(url: str, *, manufacturer: str = "", model: str = "",
             with connection.cursor() as cursor:
                 cursor.execute(
                     """SELECT p.file_id, p.data->>'filename', p.data->>'manufacturer',
-                              p.data->>'luminaire', p.data->>'format', f.sha256
+                              p.data->>'luminaire', p.data->>'format', f.sha256,
+                              p.data->>'catalogue_number'
                        FROM photolab.photometries p
                        JOIN photolab.photometry_files f ON f.id = p.file_id
                        WHERE strpos(lower(coalesce(p.data->>'manufacturer', '')), lower(%s)) > 0
-                         AND strpos(lower(coalesce(p.data->>'luminaire', '')), lower(%s)) > 0
+                         AND strpos(lower(concat_ws(' ', p.data->>'luminaire', p.data->>'catalogue_number')), lower(%s)) > 0
                        ORDER BY p.file_id LIMIT %s OFFSET %s""",
                     (manufacturer.strip(), model.strip(), limit, offset),
                 )
-                return [dict(zip(('file_id', 'filename', 'manufacturer', 'model', 'format', 'sha256'), row))
+                return [dict(zip(('file_id', 'filename', 'manufacturer', 'model', 'format', 'sha256', 'catalogue_number'), row))
                         for row in cursor.fetchall()]
     except psycopg.Error:
         raise DatabaseError("PostgreSQL catalogue read failed. Check the connection and migrations.") from None

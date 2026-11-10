@@ -50,6 +50,8 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
     else:
         ranking = next(table for table in tables if 'Candidate' in table.columns)
         assert ranking['Candidate'].tolist() == ['[DB 2] same.ies']
+        assert ranking['Brand'].tolist() == ['SYNTHETIC SAMPLES / NOT A MANUFACTURER']
+        assert ranking['Catalogue number'].tolist() == ['Test']
         assert not errors
 
 

@@ -26,6 +26,12 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Pierwszy etap metadanych produktów: osobny numer katalogowy z IES/LDT,
+  marka i numer na listach oraz w wynikach Streamlit; starsze rekordy pozostają
+  czytelne bez zgadywania źródła ich pola opisu.
+- [ ] Powiązanie IES/LDT ze zdjęciami i JSON w partiach ZIP, trwała kolejka,
+  kontrolowane uzupełnienie metadanych starszych rekordów i walidacja pochodzenia.
+
 - [x] Wielokrotny wybór ZIP oraz sekwencyjny import katalogu ZIP przez CLI.
 - [ ] Trwała kolejka ZIP z automatycznym wznawianiem po przerwaniu.
 

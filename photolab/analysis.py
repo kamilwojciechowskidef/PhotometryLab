@@ -79,6 +79,8 @@ class Similarity:
     cosine: float           # [-1, 1], typically [0, 1] for nonnegative intensities
     rmse: float             # lower is better, max-normalized intensities
     rotation_deg: int       # candidate azimuth shift yielding best alignment
+    manufacturer: str = ''
+    catalogue_number: str | None = None
 
 
 def compare(reference: Photometry, candidate: Photometry, allow_rotation: bool = True) -> Similarity:
@@ -93,7 +95,8 @@ def compare(reference: Photometry, candidate: Photometry, allow_rotation: bool =
         cos = float(np.sum(w * x * z) / (nx * nz))
         rms = float(np.sqrt(np.sum(w * (x-z)**2)))
         # Choose minimum error, then cosine; stable 0 degree on exact ties.
-        result = Similarity(candidate.filename, cos, rms, int(C_GRID[shift]))
+        result = Similarity(candidate.filename, cos, rms, int(C_GRID[shift]),
+                            candidate.manufacturer, candidate.catalogue_number)
         if best is None or (result.rmse < best.rmse - 1e-12) or (
             abs(result.rmse-best.rmse) <= 1e-12 and result.cosine > best.cosine + 1e-12
         ):

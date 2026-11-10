@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from .diagnostics import DIAGNOSTICS_VERSION, diagnose, distance_rows
+from .product_labels import product_label
 
 COLORS = ('#0284c7', '#ea580c')
 
@@ -94,8 +95,11 @@ def render_diagnostics(st, items):
     if not items:
         st.info('Upload one readable IES/LDT file or select a saved luminaire in the sidebar.')
         return
-    selected = st.selectbox('Diagnostic luminaire', [item.filename for item in items], key='diagnostic_file')
+    by_filename = {item.filename: item for item in items}
+    selected = st.selectbox('Diagnostic luminaire', list(by_filename), key='diagnostic_file',
+                            format_func=lambda name: product_label(by_filename[name]))
     item = next(item for item in items if item.filename == selected)
+    st.caption(f"Brand: {item.manufacturer or 'unavailable'} · Catalogue number: {item.catalogue_number or 'unavailable'}")
     labels = {'Absolute intensity [cd]': 'absolute', 'Source units': 'source',
               'Normalized to native maximum': 'normalized'}
     if item.to_cd is None:
