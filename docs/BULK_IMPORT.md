@@ -14,7 +14,8 @@ Dla dużego zbioru umieść ZIP-y w jednym lokalnym katalogu i uruchom:
 ```
 
 Polecenie czyta jedno archiwum naraz i nie wymaga uploadu całego zbioru.
-Przetwarza ZIP-y bezpośrednio w podanym katalogu. Błąd archiwum zatrzymuje CLI;
+Przetwarza ZIP-y w podanym katalogu i podkatalogach producentów, zachowując
+ścieżkę względną w opisie pochodzenia. Błąd archiwum zatrzymuje CLI;
 ukończone partie pozostają zapisane. Automatyczne wznawianie kolejki nie jest
 jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie.
 
