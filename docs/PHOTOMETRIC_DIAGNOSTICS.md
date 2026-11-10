@@ -104,6 +104,24 @@ obwiedni. Granica na ±90° nie ma skończonego rzutu — nie pokazujemy wtedy
 szerokości w metrach. Są to rzuty kierunków o połowie **światłości**, nie
 kontur połowy **natężenia oświetlenia** na płaszczyźnie.
 
+### Czytelność wykresów i tabel
+
+Wykresy mają własne jasne tło i ciemne opisy, niezależne od motywu Streamlit.
+Diagram odległości zaczyna oś X od zera. Skale X i Y są niezależne, aby
+wykorzystać szerokość ekranu: nachylenie linii na ekranie nie przedstawia
+rzeczywistego kąta wiązki. Wartości geometryczne należy odczytywać z osi i tabel.
+
+Etykieta **Sampled maximum** ma jednostkę w podpisie poniżej; **Peak direction**
+podaje kolejno C / γ. **On-axis [cd]** pozostaje w kandelach niezależnie od
+wybranej skali wykresu.
+
+Tabele ekranowe zaokrąglają wartości do dwóch miejsc po przecinku i zachowują
+braki jako puste komórki. Główna tabela odległości pokazuje luks na osi i dwie
+szerokości; **Boundary positions — detailed table** rozwija podpisane pozycje
+granic. Powody niedostępnego FWHM znajdują się pod tabelą szerokości.
+Eksport CSV zachowuje niezaokrąglone wartości oraz statusy. Formatowanie nie
+zmienia obliczeń ani nie oznacza dokładności pomiarowej do 0,01° czy 0,01 m.
+
 ## 4. Luks na osi
 
 Jeśli istnieją zgodne próbki γ=0° i wiarygodne `to_cd`, wyznaczamy:

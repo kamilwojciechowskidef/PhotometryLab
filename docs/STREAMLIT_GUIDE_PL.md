@@ -7,6 +7,10 @@ Niżej są granice i szerokości FWHM dwóch przekrojów, suwak maksymalnej odle
 diagram projekcji wiązki, tabela luksów na osi oraz trzy eksporty CSV.
 Zakładka korzysta z pojedynczego odczytanego modelu, także wyłączonego z rankingu;
 brakujące dane ograniczają odpowiednie obliczenia. Nie zmienia zapisanej bazy.
+Wykresy mają kontrastowy jasny motyw. Główna tabela odległości pokazuje cztery
+kolumny, a pozycje granic są pod **Boundary positions — detailed table**.
+Wartości ekranowe są zaokrąglone do dwóch miejsc; CSV zachowuje pełną precyzję.
+Diagram odległości ma niezależne skale osi — jego nachylenia nie są miarą kąta.
 Pełny opis metody i ograniczeń: [PHOTOMETRIC_DIAGNOSTICS.md](PHOTOMETRIC_DIAGNOSTICS.md).
 Poniższe sekcje opisują wcześniejsze trzy zakładki i pozostały interfejs.
 
