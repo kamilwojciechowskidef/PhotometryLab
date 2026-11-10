@@ -4,7 +4,8 @@ import streamlit as st
 
 from .artifacts import artifact_root
 from .database import database_url, DatabaseError
-from .bulk import prepare_files, prepare_zip, import_batch, batch_history
+from .bulk import prepare_files, import_batch, batch_history
+from .zip_products import import_product_zip
 
 
 def render_bulk_import(version):
@@ -26,12 +27,12 @@ def render_bulk_import(version):
                 for number, archive in enumerate(archives, 1):
                     st.write(f'Archive {number}/{len(archives)}: {archive.name}')
                     try:
-                        files = prepare_zip(archive.getvalue())
-                        batch_id, rows = import_batch(database_url(), files, artifact_root(),
+                        batch_id, rows, groups, skipped = import_product_zip(
+                            database_url(), archive.getvalue(), artifact_root(),
                             f'{description.strip()} / {archive.name}', version)
                         summaries.append(dict(archive=archive.name, batch_id=batch_id,
-                            files=len(rows), errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
-                        del files
+                            bundles=len(groups), photometry_files=len(rows), skipped=len(skipped),
+                            errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
                     except (ValueError, OSError, DatabaseError) as error:
                         summaries.append(dict(archive=archive.name, error=str(error)))
                 st.dataframe(pd.DataFrame(summaries), hide_index=True)

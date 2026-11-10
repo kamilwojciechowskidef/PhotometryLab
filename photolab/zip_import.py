@@ -3,8 +3,9 @@ import argparse
 from pathlib import Path
 
 from .artifacts import artifact_root
-from .bulk import MAX_TOTAL_BYTES, prepare_zip, import_batch
+from .bulk import MAX_TOTAL_BYTES
 from .database import database_url
+from .zip_products import import_product_zip
 
 
 def import_directory(directory, url, root, description, version='zip-cli-v1'):
@@ -16,11 +17,11 @@ def import_directory(directory, url, root, description, version='zip-cli-v1'):
             raise ValueError(f'Archive exceeds size limit or is a symlink: {path.name}')
         with path.open('rb') as stream:
             content = stream.read(MAX_TOTAL_BYTES + 1)
-        files = prepare_zip(content)
-        del content
-        batch_id, rows = import_batch(url, files, root, f'{description} / {path.name}', version)
-        print(f'{path.name}: batch={batch_id} files={len(rows)}', flush=True)
-        del files, rows
+        batch_id, rows, groups, skipped = import_product_zip(
+            url, content, root, f'{description} / {path.name}', version)
+        print(f'{path.name}: batch={batch_id} bundles={len(groups)} '
+              f'photometry={len(rows)} skipped={len(skipped)}', flush=True)
+        del content, rows, groups, skipped
 
 
 def main():
