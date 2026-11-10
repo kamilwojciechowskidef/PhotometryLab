@@ -6,6 +6,10 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Korekta generatora asymetrycznego demo: spójność obu biegunów,
+  maksimum odchylonej wiązki i regresja działania diagnostyki FWHM/luksów.
+  Nie stanowi to walidacji danych producentów ani pełnego audytu raportu jakości.
+
 Pierwszy przyrost: parser LDT odrzuca niepełne zakresy C dla `Isym=2/3/4`.
 Dodano cztery przypadki regresyjne odrzucania brakujących granic oraz trzy
 przypadki poprawnych nierównomiernych siatek, obejmujące odbicia i C=0/360°.
@@ -59,6 +63,12 @@ pozostają do wykonania.
 **Warunek ukończenia:** powtarzalny import zbioru, statystyki jakości, brak cichych pominięć i zapisane pochodzenie danych.
 
 ## P2 — porównania fotometryczne
+
+- [x] Diagnostyka jednej oprawy: przekroje biegunowe C0–C180/C90–C270,
+  FWHM na natywnych kątach, projekcja granic wiązki, przybliżenie luksów na osi
+  i eksport CSV. Definicje i ograniczenia: [PHOTOMETRIC_DIAGNOSTICS.md](PHOTOMETRIC_DIAGNOSTICS.md).
+- [ ] Walidacja diagnostyki i kątów FWHM na niezależnych plikach referencyjnych
+  oraz kartach producentów (z uwzględnieniem definicji osi i szerokości).
 
 - [ ] Jawne alternatywy metryk (np. cosinus, RMSE, korelacja/Pearson z opisem ograniczeń); porównywalne warunki testu.
 - [ ] Zbadać wrażliwość rankingu na siatkę, symetrię, orientację oprawy, szum danych i dopuszczalne obroty.

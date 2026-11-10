@@ -131,7 +131,12 @@ if excluded:
 st.warning("**Interpretation:** The ranking compares primarily the **distribution shape**, not full luminaire equivalence. "
            "Selecting a replacement also requires checking flux, power, colour, geometry, protection class, and lighting calculations.")
 
-t1, t2, t3 = st.tabs(["Comparison and ranking", "Catalogue and data quality", "ML exploration (experimental)"])
+t1, t2, t3, t4 = st.tabs(["Comparison and ranking", "Catalogue and data quality", "ML exploration (experimental)",
+                         "Photometric diagnostics"])
+
+with t4:
+    from photolab.diagnostics_ui import render_diagnostics
+    render_diagnostics(st, parsed)
 
 with t1:
     if eligible:
@@ -151,7 +156,7 @@ with t1:
                     st.info("No indexed candidates were found. Build features for the saved catalogue first.")
                 else:
                     st.subheader("Indexed catalogue candidates")
-                    st.dataframe(indexed_df, use_container_width=True, hide_index=True)
+                    st.dataframe(indexed_df, width='stretch', hide_index=True)
                     st.download_button("Download indexed catalogue CSV", indexed_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
                                        file_name="catalogue_ranking.csv", mime="text/csv")
                     st.caption(
@@ -170,7 +175,7 @@ with t1:
             "Rotation [°]": r.rotation_deg,
         } for no, r in enumerate(results)])
         st.subheader("Most similar distributions")
-        st.dataframe(result_df, use_container_width=True, hide_index=True)
+        st.dataframe(result_df, width='stretch', hide_index=True)
         csv_data = result_df.to_csv(index=False, sep=";").encode("utf-8-sig")
         st.download_button("Download ranking CSV", csv_data, file_name="photometry_ranking.csv",
                            mime="text/csv")
@@ -192,7 +197,7 @@ with t1:
         fig.update_layout(title="Cross-section comparison after rotation alignment", height=430,
                           xaxis_title="Gamma angle γ [°]", yaxis_title="Intensity / maximum [-]",
                           legend=dict(orientation="h", y=-0.3), margin=dict(l=20,r=20,t=50,b=20))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         st.caption("Each luminaire matrix is independently scaled to maximum = 1. "
                    "Comparison: C every 10°, γ = 0–90° every 5°. Angular weights: sin(γ). "
                    "Rotation is aligned by minimizing RMSE.")
@@ -200,7 +205,7 @@ with t1:
                                       colorbar=dict(title="I / Imax"), colorscale="Viridis"))
         h.update_layout(title=f"Distribution map · {ref.filename}", height=360,
                         xaxis_title="γ [°]", yaxis_title="C [°]", margin=dict(l=20,r=20,t=50,b=20))
-        st.plotly_chart(h, use_container_width=True)
+        st.plotly_chart(h, width='stretch')
 
 with t2:
     table_rows = []
@@ -214,18 +219,25 @@ with t2:
             "Format": item.format if item is not None else "unavailable — file rejected",
             "Manufacturer": item.manufacturer if item is not None else "unavailable",
             "Model": item.luminaire if item is not None else "unavailable",
-            "C planes": len(item.c_angles) if item is not None else "unavailable",
-            "Gamma angles": len(item.gamma_angles) if item is not None else "unavailable",
+            "C planes": len(item.c_angles) if item is not None else None,
+            "Gamma angles": len(item.gamma_angles) if item is not None else None,
             "Symmetry": item.symmetry if item is not None else "unavailable",
             "Source unit": item.unit if item is not None else "unavailable",
-            "Power [W]": round(item.power_w, 2) if item is not None and item.power_w is not None else "unavailable",
-            "Header flux [lm]": round(item.source_flux_lm, 1) if item is not None and item.source_flux_lm is not None else "unavailable",
-            "Calculated downward flux [lm]": round(down, 1) if down is not None else "unavailable",
+            "Power [W]": round(item.power_w, 2) if item is not None and item.power_w is not None else None,
+            "Header flux [lm]": round(item.source_flux_lm, 1) if item is not None and item.source_flux_lm is not None else None,
+            "Calculated downward flux [lm]": round(down, 1) if down is not None else None,
             "Covers γ 0–90°": "yes" if item is not None and item.covers_downward else "no",
             "Reasons / warnings": " | ".join(report.issues) or "none",
         })
     quality_df = pd.DataFrame(table_rows)
-    st.dataframe(quality_df, use_container_width=True, hide_index=True)
+    if not quality_df.empty:
+        quality_df = quality_df.astype({
+            'C planes': 'Int64', 'Gamma angles': 'Int64',
+            'Power [W]': 'Float64', 'Header flux [lm]': 'Float64',
+            'Calculated downward flux [lm]': 'Float64',
+        })
+    st.dataframe(quality_df, width='stretch', hide_index=True)
+    st.caption('Missing numeric values are shown as empty cells and exported as empty CSV fields; they are not zero.')
     st.download_button("Download quality report CSV", quality_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
                        file_name="import_quality_report.csv", mime="text/csv")
     st.caption("Downward flux is a numerical estimate from the intensity distribution in cd; the header value may have a different meaning. "
@@ -332,9 +344,9 @@ with t3:
                             hover_name="File", title="PCA · photometric distribution features")
         fig_ml.update_traces(marker=dict(size=12))
         fig_ml.update_layout(height=480)
-        st.plotly_chart(fig_ml, use_container_width=True)
+        st.plotly_chart(fig_ml, width='stretch')
         st.caption(f"Explained variance: PC1 {explained[0]*100:.1f}%, PC2 {explained[1]*100:.1f}%")
-        st.dataframe(ml_data, use_container_width=True, hide_index=True)
+        st.dataframe(ml_data, width='stretch', hide_index=True)
         st.download_button("Download ML results CSV", ml_data.to_csv(index=False, sep=";").encode("utf-8-sig"),
                            "ml_results.csv", mime="text/csv")
 

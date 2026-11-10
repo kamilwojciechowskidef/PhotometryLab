@@ -53,14 +53,30 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
         assert not errors
 
 
-def test_app_demo_flow(monkeypatch):
+@pytest.mark.parametrize('include_rejected', [False, True])
+def test_app_demo_flow(monkeypatch, include_rejected):
+    import pyarrow as pa
+    quality_tables = []
+    def check_arrow(data, **kwargs):
+        arrow = pa.Table.from_pandas(data, preserve_index=False)
+        if 'Header flux [lm]' in data.columns:
+            quality_tables.append(data)
+            assert pa.types.is_floating(arrow.schema.field('Header flux [lm]').type)
+            assert pa.types.is_integer(arrow.schema.field('C planes').type)
+            assert data['Header flux [lm]'].isna().any()
+            assert data['Header flux [lm]'].notna().any()
+            if include_rejected:
+                assert data.loc[data['File'] == 'damaged.ies', 'C planes'].isna().all()
+
     stub = ModuleType('streamlit')
     stub.sidebar = nullcontext()
     noop = lambda *args, **kwargs: None
     for method in ['set_page_config', 'title', 'caption', 'write', 'header', 'divider',
                    'warning', 'info', 'error', 'success', 'dataframe', 'download_button', 'plotly_chart', 'subheader']:
         setattr(stub, method, noop)
-    stub.file_uploader = lambda *a, **k: []
+    stub.dataframe = check_arrow
+    stub.file_uploader = lambda *a, **k: ([SimpleNamespace(name='damaged.ies', getvalue=lambda: b'bad')]
+                                        if include_rejected else [])
     stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk') else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
@@ -72,6 +88,7 @@ def test_app_demo_flow(monkeypatch):
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected empty demo'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
+    assert len(quality_tables) == 1
 
 
 def test_app_exports_quality_report_for_rejected_file(monkeypatch):
