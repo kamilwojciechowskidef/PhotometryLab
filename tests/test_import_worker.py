@@ -53,9 +53,17 @@ def test_companion_files_are_persisted_with_names_and_hashes(tmp_path, monkeypat
     class Connection:
         def __enter__(self): return self
         def __exit__(self, *args): pass
-        def execute(self, query, params): saved.append(params)
+        def execute(self, query, params):
+            saved.append((query, params))
+            return self
+        def fetchone(self): return (7,)
     monkeypatch.setattr(import_worker.psycopg, 'connect', lambda *args, **kwargs: Connection())
     monkeypatch.setattr(import_worker, 'save_source', lambda root, data: 'key-' + str(len(data)))
-    import_worker.save_assets('db', tmp_path, 5, zip_bytes())
-    assert [row[1] for row in saved] == ['fixture.jpg', 'fixture.json']
-    assert saved[0][2] == '6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d'
+    import_worker.save_assets('db', tmp_path, 5, zip_bytes(), [{'filename': 'fixture.ies', 'file_id': 42}])
+    bundle_inserts = [params for query, params in saved if 'INSERT INTO photolab.zip_product_bundles' in query]
+    assets = [params for query, params in saved if 'INSERT INTO photolab.zip_bundle_assets' in query]
+    assert bundle_inserts == [(5, 'fixture')]
+    assert [row[1] for row in assets] == ['fixture.ies', 'fixture.jpg', 'fixture.json']
+    assert assets[0][-1] == 42
+    assert assets[1][3] == '6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d'
+    assert any('UPDATE photolab.zip_product_bundles' in query for query, _ in saved)

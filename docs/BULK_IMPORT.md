@@ -9,9 +9,10 @@ Błędne ZIP-y są ponawiane; częściowo zapisane partie mogą pozostać w bazi
 Przerwanie po zapisaniu partii, lecz przed punktem wznowienia, również może
 utworzyć ponowną partię i aliasy; fotometria jest deduplikowana po SHA-256.
 
-Worker zapisuje JPG/JPEG/PNG i JSON w prywatnym magazynie, a ich nazwy, hashe
-i identyfikator partii w tabeli `photolab.archive_assets` (migracja `006`).
-Wspólna nazwa w ZIP-ie pozwala powiązać pliki, jednak obecny interfejs nie
+Worker grupuje IES/LDT/JPG/JPEG/PNG i JSON według wspólnej ścieżki i nazwy
+bez rozszerzenia oraz zapisuje je w tabelach `photolab.zip_product_bundles`
+i `photolab.zip_bundle_assets` (migracja `006`); oryginały są w prywatnym
+magazynie. Obiekt JSON trafia również do metadanych pakietu. Obecny interfejs nie
 wyświetla jeszcze zdjęć ani danych z JSON. Raport starego importu może oznaczać
 te pliki jako `skipped`, ponieważ zapisuje je osobny etap workera. Pliki
 odrzucone przez parser pozostają w raporcie; ukończony ZIP nie oznacza, że

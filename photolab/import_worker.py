@@ -2,18 +2,20 @@
 import argparse
 import hashlib
 from io import BytesIO
+import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import sqlite3
 from zipfile import ZipFile
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from .artifacts import artifact_root, save_source
 from .bulk import MAX_FILE_BYTES, MAX_TOTAL_BYTES, import_batch, prepare_zip
 from .database import database_url
 
-ASSET_SUFFIXES = {'.jpg', '.jpeg', '.png', '.json'}
+ASSET_SUFFIXES = {'.ies', '.ldt', '.jpg', '.jpeg', '.png', '.json'}
 
 
 def archives(directory):
@@ -24,14 +26,16 @@ def archives(directory):
                 yield Path(current) / name
 
 
-def save_assets(url, root, batch_id, content):
-    """Save supported companion bytes; prepare_zip already validated ZIP structure."""
+def save_assets(url, root, batch_id, content, report):
+    """Group archive members by path stem and link imported photometry records."""
+    records = {row['filename']: row.get('file_id') for row in report}
+    bundles = {}
     with ZipFile(BytesIO(content)) as archive, psycopg.connect(url, connect_timeout=5) as connection:
         for info in archive.infolist():
             if info.is_dir() or Path(info.filename).suffix.lower() not in ASSET_SUFFIXES:
                 continue
             if info.file_size > MAX_FILE_BYTES:
-                raise ValueError(f'Companion file exceeds size limit: {info.filename}')
+                raise ValueError(f'Archive member exceeds size limit: {info.filename}')
             if info.file_size > max(info.compress_size, 1) * 200:
                 raise ValueError(f'Companion compression ratio exceeds limit: {info.filename}')
             with archive.open(info) as stream:
@@ -40,10 +44,27 @@ def save_assets(url, root, batch_id, content):
                 raise ValueError(f'Invalid companion size: {info.filename}')
             digest = hashlib.sha256(asset).hexdigest()
             key = save_source(root, asset)
-            connection.execute('''INSERT INTO photolab.archive_assets
-                (batch_id, member_name, sha256, size_bytes, private_artifact_path)
-                VALUES (%s, %s, %s, %s, %s)''',
-                (batch_id, info.filename, digest, len(asset), key))
+            member = PurePosixPath(info.filename)
+            stem = str(member.with_suffix(''))
+            if stem not in bundles:
+                bundles[stem] = connection.execute('''INSERT INTO photolab.zip_product_bundles
+                    (import_batch_id, source_stem) VALUES (%s, %s) RETURNING id''',
+                    (batch_id, stem)).fetchone()[0]
+            bundle_id = bundles[stem]
+            kind = member.suffix.lower().lstrip('.')
+            kind = 'jpg' if kind == 'jpeg' else kind
+            if kind == 'json':
+                try:
+                    metadata = json.loads(asset.decode('utf-8-sig'))
+                except (UnicodeError, ValueError):
+                    metadata = None
+                if isinstance(metadata, dict):
+                    connection.execute('UPDATE photolab.zip_product_bundles SET metadata=%s WHERE id=%s',
+                                       (Jsonb(metadata), bundle_id))
+            connection.execute('''INSERT INTO photolab.zip_bundle_assets
+                (bundle_id, original_filename, kind, sha256, size_bytes, artifact_path, photometry_file_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                (bundle_id, info.filename, kind, digest, len(asset), key, records.get(info.filename)))
 
 
 def run(directory, url, root, description, checkpoint, limit=None):
@@ -84,7 +105,7 @@ def run(directory, url, root, description, checkpoint, limit=None):
                 batch_id, report = import_batch(url, files, root, f'{description} / {relative}', 'zip-worker-v1')
                 if any(row['outcome'] == 'error' for row in report):
                     raise RuntimeError('One or more photometry files could not be saved; see batch report.')
-                save_assets(url, root, batch_id, content)
+                save_assets(url, root, batch_id, content, report)
                 after = path.stat()
                 if (info.st_size, info.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
                     raise ValueError('ZIP changed during import; retry is required.')
@@ -111,7 +132,8 @@ def main():
     args = parser.parse_args()
     url = database_url()
     with psycopg.connect(url, connect_timeout=5) as connection:
-        if connection.execute("SELECT to_regclass('photolab.archive_assets')").fetchone()[0] is None:
+        if any(connection.execute('SELECT to_regclass(%s)', (f'photolab.{table}',)).fetchone()[0] is None
+               for table in ('zip_product_bundles', 'zip_bundle_assets')):
             raise SystemExit('Apply database migration 006 before running the worker.')
     done, errors = run(args.directory, url, artifact_root(), args.source, args.checkpoint, args.limit)
     print(f'Finished: completed={done} errors={errors}', flush=True)
