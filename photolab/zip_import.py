@@ -20,7 +20,7 @@ def import_directory(directory, url, root, description, version='zip-cli-v1'):
         batch_id, rows, groups, skipped = import_product_zip(
             url, content, root, f'{description} / {path.name}', version)
         print(f'{path.name}: batch={batch_id} bundles={len(groups)} '
-              f'photometry={len(rows)} skipped={len(skipped)}', flush=True)
+              f'photometry={len(rows) - len(skipped)} skipped={len(skipped)}', flush=True)
         del content, rows, groups, skipped
 
 

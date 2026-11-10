@@ -26,6 +26,11 @@ pozostają do wykonania.
 
 ## P1 — katalog i przetwarzanie większej skali
 
+- [x] Pierwszy etap zestawów ZIP: migracja `006`, powiązanie fotometrii z JSON
+  i obrazami w zakresie jednego archiwum, podgląd i centralny trwały katalog.
+- [ ] Trwała kolejka, odporność na przerwanie pomiędzy zapisem fotometrii a
+  zestawem oraz bezpieczny import 28 tys. ZIP-ów po pomiarze na próbce.
+
 - [x] Pierwszy etap metadanych produktów: osobny numer katalogowy z IES/LDT,
   marka i numer na listach oraz w wynikach Streamlit; starsze rekordy pozostają
   czytelne bez zgadywania źródła ich pola opisu.

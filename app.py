@@ -132,8 +132,56 @@ if excluded:
 st.warning("**Interpretation:** The ranking compares primarily the **distribution shape**, not full luminaire equivalence. "
            "Selecting a replacement also requires checking flux, power, colour, geometry, protection class, and lighting calculations.")
 
-t1, t2, t3, t4 = st.tabs(["Comparison and ranking", "Catalogue and data quality", "ML exploration (experimental)",
-                         "Photometric diagnostics"])
+t0, t1, t2, t3, t4 = st.tabs(["Saved catalogue", "Comparison and ranking", "Catalogue and data quality",
+                             "ML exploration (experimental)", "Photometric diagnostics"])
+
+with t0:
+    st.subheader('Saved photometry catalogue')
+    st.caption('Persistent catalogue from PostgreSQL. ZIP imports and individually saved files remain available after restarting the app.')
+    catalogue_page_main = st.number_input('Saved catalogue page', min_value=1, value=1, step=1,
+                                          key='catalogue_main_page')
+    try:
+        main_rows = list_catalogue(database_url(), limit=50, offset=(int(catalogue_page_main) - 1) * 50)
+        if main_rows:
+            st.dataframe(pd.DataFrame(main_rows).drop(columns=['sha256']).rename(columns={
+                'file_id': 'ID', 'filename': 'Original file', 'manufacturer': 'Brand',
+                'model': 'Model / description', 'format': 'Format', 'catalogue_number': 'Catalogue number',
+            }), width='stretch', hide_index=True)
+            st.caption('Select a saved entry for comparisons through Browse saved catalogue in the sidebar. '
+                       'Each IES or LDT is a separate photometry entry.')
+            main_choices = {row['file_id']: row for row in main_rows}
+            main_file = st.selectbox('Saved photometry details', list(main_choices),
+                format_func=lambda key: f"#{key} · {main_choices[key]['manufacturer']} · "
+                                        f"{main_choices[key].get('catalogue_number') or main_choices[key]['model']} · "
+                                        f"{main_choices[key]['filename']}", key='catalogue_main_file')
+            if st.checkbox('Show associated ZIP assets', key='catalogue_assets'):
+                from photolab.zip_products import list_related_bundles, load_bundle, preview_image
+                try:
+                    bundles = list_related_bundles(database_url(), main_file)
+                    if not bundles:
+                        st.info('No ZIP bundle is linked to this file. Older imports remain accessible as photometry.')
+                    else:
+                        bundle_names = dict(bundles)
+                        selected_bundle = st.selectbox('Import bundle', list(bundle_names),
+                            format_func=lambda key: f"#{key} · {bundle_names[key]}")
+                        metadata, assets = load_bundle(database_url(), selected_bundle)
+                        st.dataframe(pd.DataFrame(assets).drop(columns=['sha256']), width='stretch', hide_index=True)
+                        if metadata is not None:
+                            with st.expander('Original JSON metadata'):
+                                st.json(metadata)
+                        pictures = [asset for asset in assets if asset['kind'] in ('jpg', 'png')]
+                        if pictures:
+                            photo_by_name = {asset['filename']: asset for asset in pictures}
+                            photo = st.selectbox('Product image', list(photo_by_name))
+                            st.image(preview_image(artifact_root(), photo_by_name[photo]), caption=photo)
+                        st.caption('ZIP group is based on archive path and filename; '
+                                   'it does not prove that IES and LDT describe identical photometry.')
+                except (DatabaseError, ArtifactError, OSError, ValueError) as error:
+                    st.warning(str(error))
+        else:
+            st.info('No saved photometry on this page. Import a ZIP or save uploaded files first.')
+    except DatabaseError as error:
+        st.info(f'Catalogue unavailable: {error}')
 
 with t4:
     from photolab.diagnostics_ui import render_diagnostics

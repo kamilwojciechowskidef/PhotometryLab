@@ -8,6 +8,9 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+- [Import ZIP i trwały katalog](docs/BULK_IMPORT.md) — migracja `006`, zestawy
+  IES/LDT/JSON/JPG/PNG, centralny katalog i wymagania przechowywania danych.
+
 - [Marka i numer katalogowy](docs/PRODUCT_METADATA.md) — odczyt z IES/LDT,
   oznaczenia w interfejsie i zgodność z wcześniej zapisanymi rekordami.
 

@@ -31,7 +31,7 @@ def render_bulk_import(version):
                             database_url(), archive.getvalue(), artifact_root(),
                             f'{description.strip()} / {archive.name}', version)
                         summaries.append(dict(archive=archive.name, batch_id=batch_id,
-                            bundles=len(groups), photometry_files=len(rows), skipped=len(skipped),
+                            bundles=len(groups), photometry_files=len(rows) - len(skipped), skipped=len(skipped),
                             errors=sum(r['outcome'] in ('error', 'skipped', 'rejected') for r in rows)))
                     except (ValueError, OSError, DatabaseError) as error:
                         summaries.append(dict(archive=archive.name, error=str(error)))

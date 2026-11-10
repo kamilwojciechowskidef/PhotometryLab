@@ -1,5 +1,11 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+Aktualizacja importu ZIP: pierwsza zakładka **Saved catalogue** pokazuje trwale
+zapisane fotometrie bez zaznaczania opcji w panelu bocznym. Po wybraniu pozycji
+**Show associated ZIP assets** pokazuje jej zestawy z nowych importów, JSON
+i dostępne zdjęcie. Wymaga migracji `006`; starsze importy nie otrzymują
+automatycznie powiązań. Szczegóły ograniczeń: [BULK_IMPORT.md](BULK_IMPORT.md).
+
 Aktualizacja 10 listopada 2026: dodano czwartą zakładkę **Photometric diagnostics**.
 Wybierz jedną oprawę w **Diagnostic luminaire**. **Diagnostic intensity scale**
 zmienia jednostki wykresu biegunowego (cd, jednostki źródłowe albo normalizacja).

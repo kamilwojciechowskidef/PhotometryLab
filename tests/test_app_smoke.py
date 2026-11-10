@@ -79,7 +79,7 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     stub.dataframe = check_arrow
     stub.file_uploader = lambda *a, **k: ([SimpleNamespace(name='damaged.ies', getvalue=lambda: b'bad')]
                                         if include_rejected else [])
-    stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk') else True
+    stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk', 'catalogue_assets') else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
     stub.tabs = lambda labels: [nullcontext() for _ in labels]
@@ -87,6 +87,7 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected empty demo'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
@@ -111,6 +112,7 @@ def test_app_exports_quality_report_for_rejected_file(monkeypatch):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('The application must not stop the quality report'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
@@ -140,6 +142,7 @@ def test_app_saves_uploaded_file_to_catalogue(monkeypatch):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected stop'))
     registered = []
     monkeypatch.setattr(database, 'database_url', lambda: 'postgresql://test')
@@ -178,6 +181,7 @@ def test_app_searches_indexed_catalogue_with_one_uploaded_reference(monkeypatch)
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     monkeypatch.setattr(indexing, 'rank_catalogue',
                         lambda *args, **kwargs: calls.append(('search', args[1].filename)) or

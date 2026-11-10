@@ -1,5 +1,65 @@
 # Import wsadowy
 
+## Zestawy produktów z ZIP i trwały katalog
+
+Aktualizacja: przed importem ZIP uruchom migracje, w tym `006`:
+
+```powershell
+.venv\Scripts\python.exe -m photolab.database
+```
+
+Nowy importer archiwów zapisuje zestawy `IES/LDT + JSON + JPG/PNG`. Grupowanie
+obejmuje **jedno archiwum i jedną ścieżkę bez rozszerzenia**: `a/item.ies`
+i `a/item.json` należą do jednej grupy, a `b/item.ies` do innej. IES i LDT
+są opcjonalne niezależnie w każdej grupie, choć całe archiwum musi zawierać
+przynajmniej jedną fotometrię. Wspólna nazwa nie dowodzi równoważności
+fotometrycznej ani globalnej tożsamości produktów między archiwami.
+
+Obsługiwane są `.ies`, `.ldt`, `.json`, `.jpg`, `.jpeg`, `.png`. JSON musi być
+obiektem UTF-8; jeśli zawiera `hash`, jego wartość musi odpowiadać nazwie pliku.
+Rozszerzenia obrazów są sprawdzane po sygnaturze, a podgląd jest dodatkowo
+dekodowany w ograniczonym rozmiarze. Przy błędnym JSON-ie, sygnaturze lub
+niejednoznacznym typie w grupie archiwum jest odrzucane przed zapisem. Inne
+wpisy są pomijane z powodem w raporcie partii. Poprzednie zabezpieczenia ZIP
+i limity 500 wpisów, 5 MB/pliku i 100 MB archiwum pozostają aktywne.
+
+Fotometrie są zapisywane dotychczasowym mechanizmem, a oryginalne bajty
+wszystkich obsługiwanych plików w magazynie SHA-256. Nowe tabele
+`zip_product_bundles` i `zip_bundle_assets` zachowują powiązania, nazwy, hashe
+oraz JSON. JSON nie nadpisuje automatycznie marki i numeru odczytanych z IES/LDT;
+konflikty i priorytety metadanych wymagają osobnej implementacji.
+
+Zakładka **Saved catalogue** jest dostępna po uruchomieniu aplikacji i pokazuje
+fotometrie zapisane w PostgreSQL, bez zaznaczania opcji w panelu bocznym.
+Wybierz rekord i zaznacz **Show associated ZIP assets**, aby obejrzeć powiązane
+pliki, JSON i jedno zdjęcie. Istniejące rekordy sprzed tej migracji nie dostają
+automatycznie powiązań do sidecarów. Dla analiz wybór pliku z katalogu nadal
+odbywa się przez **Browse saved catalogue**; centralny widok nie dodaje całej
+bazy do bieżącej sesji.
+
+**Ważne ograniczenie:** zapis fotometrii odbywa się w osobnych transakcjach,
+przed transakcją powiązań ZIP. Awaria na tym etapie może zostawić fotometrię
+bez powiązanych sidecarów; importer podaje numer partii do kontroli. Nie ma
+jeszcze trwałej kolejki, automatycznego wznawiania ani gwarancji dokładnie
+jednokrotnego importu. Ponowienie tworzy nową partię i aliasy. Nie uruchamiaj
+pełnego zbioru 28 tys. ZIP-ów przed przygotowaniem kolejki i pilotażem.
+
+Po deploymencie dane będą widoczne tylko wtedy, gdy aplikacja docelowa ma dostęp
+do właściwej bazy PostgreSQL i trwałego katalogu `PHOTOLAB_ARTIFACT_DIR`.
+`127.0.0.1` wskazuje komputer, na którym działa serwer aplikacji. Restart
+kontenera lub serwera nie odtworzy plików z laptopa automatycznie. Kopie
+zapasowe muszą obejmować zarówno bazę, jak i magazyn oryginałów.
+
+Na czas zapisu powiązań importer ponownie oznacza partię jako `running`;
+zakończenie powiązań i status końcowy są zatwierdzane w jednej transakcji.
+Wąska przerwa między wcześniejszym zakończeniem importu fotometrii a ustawieniem
+`running` nadal istnieje, więc status nie jest jeszcze gwarancją pełnego importu.
+
+Istniejący interfejs importu wielu ZIP-ów i CLI `photolab.zip_import` korzystają
+teraz z nowego importera. Migracja 006 jest sprawdzana przed rozpoczęciem
+transakcji fotometrii. Limity i zachowanie przy przerwaniu opisane poniżej
+nadal dotyczą pojedynczej partii.
+
 ## Wiele ZIP-ów
 
 Uploader ZIP pozwala wybrać wiele archiwów. Łączny rozmiar uploadu jest
@@ -20,7 +80,7 @@ jeszcze dostępne. Ponowienie deduplikuje pliki, ale tworzy nowe aliasy i partie
 
 Przed użyciem uruchom `python -m photolab.database` (migracja `004`).
 Po restarcie Streamlit zaznacz `Open batch import` na dole strony.
-Wybierz wiele IES/LDT albo pojedynczy ZIP, opisz pochodzenie zbioru i kliknij
+Wybierz wiele IES/LDT albo wiele ZIP-ów, opisz pochodzenie zbioru i kliknij
 `Import batch`. Automatyczne próbki demonstracyjne nie są importowane.
 
 Limity: 500 wpisów ZIP lub plików, 5 000 000 bajtów na plik, 100 000 000
