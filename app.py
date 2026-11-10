@@ -16,7 +16,7 @@ from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                shape_matrix)
 from photolab.demo import samples
 from photolab.database import DatabaseError, database_url, register_file_import
-from photolab.database import list_catalogue, load_stored_photometry
+from photolab.database import list_catalogue, load_stored_photometries
 from photolab.indexing import rank_catalogue
 from photolab.identifiers import identify_file
 from photolab.parsers import PhotometryError, load_photometry
@@ -70,6 +70,8 @@ for name, content in payload.items():
         quality_reports.append(rejected_file_report(name, str(error)))
 
 with st.sidebar:
+    session_state = getattr(st, 'session_state', {})
+    selected_catalogue = session_state.setdefault('selected_catalogue_files', {})
     browse_catalogue = st.checkbox("Browse saved catalogue", value=False, key="browse_catalogue")
     if browse_catalogue:
         try:
@@ -90,43 +92,72 @@ with st.sidebar:
             if not catalogue_rows:
                 st.info("No saved photometry on this page. Earlier metadata-only imports must be uploaded and saved again.")
             else:
-                st.dataframe(pd.DataFrame([{
-                    'ID': row['file_id'], 'Brand': row['manufacturer'],
-                    'Catalogue / model': row.get('catalogue_number') or row['model'] or 'Unavailable',
-                } for row in catalogue_rows]), hide_index=True, width='stretch')
                 choices = {row['file_id']: row for row in catalogue_rows}
                 selected_ids = st.multiselect(
-                    "Add saved luminaires to comparison", list(choices),
+                    "Choose saved luminaires on this page", list(choices),
                     format_func=lambda file_id: f"{choices[file_id]['manufacturer']} · {choices[file_id].get('catalogue_number') or choices[file_id]['model'] or 'Unavailable'} · #{file_id}",
                 )
-                st.caption("Selection applies to the current page and filters. Up to 50 records per page.")
+                if st.button('Add selected to comparison', key='add_catalogue_selection'):
+                    new_ids = [file_id for file_id in selected_ids if file_id not in selected_catalogue]
+                    if len(selected_catalogue) + len(new_ids) > 20:
+                        st.warning('Select at most 20 saved photometry files for the local comparison.')
+                    elif not selected_ids:
+                        st.info('Choose at least one saved luminaire above first.')
+                    else:
+                        for file_id in new_ids:
+                            row = choices[file_id]
+                            selected_catalogue[file_id] = {
+                                'sha256': row['sha256'], 'filename': row['filename'],
+                                'label': f"#{file_id} · {row['manufacturer']} · {row.get('catalogue_number') or row['model'] or 'Unavailable'}",
+                            }
+                        session_state['select_catalogue_reference'] = selected_ids[0]
+                        st.success(f'{len(new_ids)} saved file(s) added to the comparison set.')
+                st.caption('Choose entries, then press Add selected. Saved choices persist when changing page or filters.')
                 st.caption('Older entries may show the source description in place of a catalogue number.')
-                loaded_hashes = {identify_file(content).sha256 for content in payload.values()}
-                used_names = set(payload)
-                for file_id in selected_ids:
-                    row = choices[file_id]
-                    if row['sha256'] in loaded_hashes:
-                        st.info(f"#{file_id}: identical file already in the comparison set.")
-                        continue
-                    saved = load_stored_photometry(catalogue_url, file_id)
-                    if saved is None:
-                        st.warning(f"#{file_id}: photometry is no longer available.")
-                        continue
-                    name = f"[DB {file_id}] {saved.filename}"
-                    while name in used_names:
-                        name = "[DB] " + name
-                    used_names.add(name)
-                    saved = replace(saved, filename=name)
-                    parsed.append(saved)
-                    quality_reports.append(assess_quality(saved))
-                    loaded_hashes.add(row['sha256'])
+                with st.expander('Show current page table'):
+                    st.dataframe(pd.DataFrame([{
+                        'ID': row['file_id'], 'Brand': row['manufacturer'],
+                        'Catalogue / model': row.get('catalogue_number') or row['model'] or 'Unavailable',
+                    } for row in catalogue_rows]), hide_index=True, width='stretch')
         except DatabaseError as error:
             st.error(str(error))
+
+    if selected_catalogue:
+        st.caption(f"Saved files in comparison: {len(selected_catalogue)} / 20")
+        for record in selected_catalogue.values():
+            st.caption(record['label'])
+        if st.button('Clear saved comparison set', key='clear_catalogue_selection'):
+            selected_catalogue.clear()
+            session_state.pop('select_catalogue_reference', None)
 
     st.divider()
     if st.checkbox('Import and save ZIP files', value=False, key='open_bulk'):
         from photolab.bulk_ui import render_bulk_import
         render_bulk_import(APP_VERSION)
+
+if selected_catalogue:
+    try:
+        saved_items = load_stored_photometries(database_url(), list(selected_catalogue))
+        loaded_hashes = {identify_file(content).sha256 for content in payload.values()}
+        used_names = set(payload)
+        for file_id, record in selected_catalogue.items():
+            saved = saved_items.get(file_id)
+            if saved is None:
+                st.warning(f'#{file_id}: stored photometry is missing or invalid; it was not added.')
+                continue
+            if record['sha256'] in loaded_hashes:
+                st.info(f'#{file_id}: identical file already in the comparison set.')
+                continue
+            name = f'[DB {file_id}] {saved.filename}'
+            while name in used_names:
+                name = '[DB] ' + name
+            used_names.add(name)
+            saved = replace(saved, filename=name)
+            parsed.append(saved)
+            quality_reports.append(assess_quality(saved))
+            loaded_hashes.add(record['sha256'])
+    except DatabaseError as error:
+        st.error(str(error))
 
 eligible = []
 excluded = []
@@ -212,6 +243,12 @@ with t4:
 with t1:
     if eligible:
         eligible_by_filename = {i.filename: i for i in eligible}
+        requested_reference = session_state.pop('select_catalogue_reference', None)
+        if requested_reference is not None:
+            prefix = f'[DB {requested_reference}] '
+            match = next((item.filename for item in eligible if item.filename.startswith(prefix)), None)
+            if match is not None:
+                session_state['ref_file'] = match
         selected = st.selectbox("Reference luminaire", list(eligible_by_filename), key="ref_file",
                                 format_func=lambda name: product_label(eligible_by_filename[name]))
         ref = next(i for i in eligible if i.filename == selected)

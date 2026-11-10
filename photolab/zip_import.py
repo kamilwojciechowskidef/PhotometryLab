@@ -1,35 +1,97 @@
 """Sequential ZIP directory import without uploading the directory to Streamlit."""
 import argparse
+from collections import Counter
+from hashlib import sha256
 from pathlib import Path
+import stat
+
+import psycopg
 
 from .artifacts import artifact_root
 from .bulk import MAX_TOTAL_BYTES
 from .database import database_url
 from .zip_products import import_product_zip
+from .zip_checkpoint import ZipCheckpoint
 
 
-def import_directory(directory, url, root, description, version='zip-cli-v1'):
+def database_target_key(url):
+    """Identify the actual PostgreSQL target without storing credentials."""
+    with psycopg.connect(url, connect_timeout=10, autocommit=True,
+                         options='-c default_transaction_read_only=on') as connection:
+        row = connection.execute('SELECT current_database(), inet_server_addr(), inet_server_port()').fetchone()
+    return sha256(repr(tuple(str(value) for value in row)).encode('utf-8')).hexdigest()
+
+
+def import_directory(directory, url, root, description, version='zip-cli-v1', *,
+                     checkpoint=None, target_key=None, recursive=False, retry_uncertain=False):
     directory = Path(directory)
     if not directory.is_dir() or not description.strip():
         raise ValueError('Provide an existing directory and source description.')
-    for path in directory.glob('*.zip'):
-        if path.is_symlink() or path.stat().st_size > MAX_TOTAL_BYTES:
-            raise ValueError(f'Archive exceeds size limit or is a symlink: {path.name}')
-        with path.open('rb') as stream:
-            content = stream.read(MAX_TOTAL_BYTES + 1)
-        batch_id, rows, groups, skipped = import_product_zip(
-            url, content, root, f'{description} / {path.name}', version)
-        print(f'{path.name}: batch={batch_id} bundles={len(groups)} '
-              f'photometry={len(rows) - len(skipped)} skipped={len(skipped)}', flush=True)
-        del content, rows, groups, skipped
+    if checkpoint is not None and not target_key:
+        raise ValueError('A database target key is required when using checkpoints.')
+    paths = sorted((p for p in (directory.rglob('*') if recursive else directory.iterdir())
+                    if p.suffix.lower() == '.zip'), key=lambda p: str(p).casefold())
+    counts = Counter()
+    for number, path in enumerate(paths, 1):
+        path_key = str(path.absolute())
+        digest = None
+        try:
+            metadata = path.lstat()
+            if (stat.S_ISLNK(metadata.st_mode) or getattr(metadata, 'st_file_attributes', 0) & 0x400
+                    or not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_TOTAL_BYTES):
+                raise ValueError('Archive is not a regular file or exceeds the per-ZIP limit.')
+            with path.open('rb') as stream:
+                content = stream.read(MAX_TOTAL_BYTES + 1)
+            if len(content) > MAX_TOTAL_BYTES:
+                raise ValueError('Archive exceeds the per-ZIP limit.')
+            digest = sha256(content).hexdigest()
+            if checkpoint is not None:
+                claimed, status = checkpoint.claim(target_key, path_key, digest,
+                                                   retry_uncertain=retry_uncertain)
+                if not claimed:
+                    counts[status] += 1
+                    print(f'[{number}/{len(paths)}] {path.name}: skipped checkpoint={status}', flush=True)
+                    continue
+            batch_id, rows, groups, skipped = import_product_zip(
+                url, content, root, f'{description} / {path.name}', version)
+            outcomes = Counter(row.get('outcome', '') for row in rows)
+            failures = sum(outcomes[key] for key in ('error', 'skipped', 'rejected'))
+            status = 'completed_with_errors' if failures else 'completed'
+            if checkpoint is not None:
+                checkpoint.finish(target_key, path_key, digest, status=status, batch_id=batch_id,
+                                  message=f'new={outcomes["new"]} duplicate={outcomes["duplicate"]} errors={failures}')
+            counts[status] += 1
+            print(f'[{number}/{len(paths)}] {path.name}: batch={batch_id} bundles={len(groups)} '
+                  f'new={outcomes["new"]} duplicate={outcomes["duplicate"]} errors={failures}', flush=True)
+        except (ValueError, OSError, sqlite3.Error, psycopg.Error, DatabaseError) as error:
+            counts['needs_review'] += 1
+            if checkpoint is not None and digest is not None:
+                checkpoint.finish(target_key, path_key, digest, status='needs_review', message=str(error))
+            print(f'[{number}/{len(paths)}] {path.name}: NEEDS REVIEW: {error}', flush=True)
+    return counts
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory', type=Path)
     parser.add_argument('--source', required=True)
+    parser.add_argument('--recursive', action='store_true', help='Include ZIP archives in subdirectories.')
+    parser.add_argument('--state-file', type=Path, help='Persistent checkpoint file (default: alongside the source archive).')
+    parser.add_argument('--retry-uncertain', action='store_true', help='Retry running/uncertain archives only after checking that no other worker is running and reviewing batch history.')
     args = parser.parse_args()
-    import_directory(args.directory, database_url(), artifact_root(), args.source)
+    url, root = database_url(), artifact_root()
+    state_file = args.state_file or root.parent / 'zip-import-checkpoints.sqlite3'
+    target = database_target_key(url)
+    checkpoint = ZipCheckpoint(state_file)
+    try:
+        counts = import_directory(args.directory, url, root, args.source, checkpoint=checkpoint,
+                                  target_key=target, recursive=args.recursive,
+                                  retry_uncertain=args.retry_uncertain)
+    finally:
+        checkpoint.close()
+    print(f'Archive summary: {dict(counts)}; checkpoint: {state_file}')
+    if any(counts[key] for key in ('needs_review', 'running', 'completed_with_errors')):
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':

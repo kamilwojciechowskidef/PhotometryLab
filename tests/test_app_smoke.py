@@ -32,7 +32,7 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
     stub.sidebar = nullcontext()
     stub.file_uploader = lambda *a, **k: []
     stub.checkbox = lambda *a, **k: k.get('key') == 'browse_catalogue'
-    stub.button = lambda *a, **k: False
+    stub.button = lambda label, **k: label == 'Add selected to comparison'
     stub.text_input = lambda *a, **k: ''
     stub.number_input = lambda *a, **k: 1
     stub.multiselect = lambda label, options, **k: options
@@ -49,8 +49,8 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
         return [dict(file_id=i, filename='same.ies', manufacturer='Example', model='Lamp',
                      format='IES', sha256=str(i) * 64) for i in (1, 2)]
     monkeypatch.setattr(database, 'list_catalogue', listing)
-    monkeypatch.setattr(database, 'load_stored_photometry',
-                        lambda *a: load_photometry('same.ies', make_ies('Test', 'oval')))
+    monkeypatch.setattr(database, 'load_stored_photometries',
+                        lambda url, ids: {i: load_photometry('same.ies', make_ies('Test', 'oval')) for i in ids})
     runpy.run_path('app.py', run_name='__main__')
     if unavailable:
         assert errors == ['Catalogue unavailable']
