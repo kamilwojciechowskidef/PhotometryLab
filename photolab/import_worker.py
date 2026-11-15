@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import sqlite3
+import shutil
 from zipfile import ZipFile
 
 import psycopg
@@ -16,6 +17,10 @@ from .bulk import MAX_FILE_BYTES, MAX_TOTAL_BYTES, import_batch, prepare_zip
 from .database import database_url
 
 ASSET_SUFFIXES = {'.ies', '.ldt', '.jpg', '.jpeg', '.png', '.json'}
+
+
+class LowDiskSpaceError(RuntimeError):
+    """Stop the worker before starting another archive."""
 
 
 def archives(directory):
@@ -67,7 +72,7 @@ def save_assets(url, root, batch_id, content, report):
                 (bundle_id, info.filename, kind, digest, len(asset), key, records.get(info.filename)))
 
 
-def run(directory, url, root, description, checkpoint, limit=None):
+def run(directory, url, root, description, checkpoint, limit=None, min_free_bytes=0):
     directory, root, checkpoint = Path(directory).resolve(), Path(root).resolve(), Path(checkpoint)
     if not directory.is_dir() or not description.strip() or (limit is not None and limit < 1):
         raise ValueError('Provide a directory, source description and positive limit.')
@@ -96,6 +101,8 @@ def run(directory, url, root, description, checkpoint, limit=None):
                     continue
                 if limit is not None and attempted >= limit:
                     break
+                if min_free_bytes and shutil.disk_usage(checkpoint.parent).free < min_free_bytes:
+                    raise LowDiskSpaceError('Import stopped: insufficient free space on checkpoint drive.')
                 attempted += 1
                 if info.st_size > MAX_TOTAL_BYTES:
                     raise ValueError('ZIP exceeds size limit.')
@@ -113,6 +120,8 @@ def run(directory, url, root, description, checkpoint, limit=None):
                               (relative, info.st_size, info.st_mtime_ns, 'completed', batch_id, ''))
                 done += 1
                 print(f'OK {relative} batch={batch_id}', flush=True)
+            except LowDiskSpaceError:
+                raise
             except (OSError, ValueError, RuntimeError) as error:
                 errors += 1
                 # Failed archives are retried, including archives partially written before failure.
@@ -129,13 +138,18 @@ def main():
     parser.add_argument('--source', required=True)
     parser.add_argument('--checkpoint', type=Path, default=Path('data/private/import-checkpoint.sqlite3'))
     parser.add_argument('--limit', type=int)
+    parser.add_argument('--min-free-gib', type=float, default=5.0,
+                        help='Stop before the next archive when the checkpoint drive falls below this free space.')
     args = parser.parse_args()
+    if not 0 <= args.min_free_gib <= 100000:
+        parser.error('--min-free-gib must be between 0 and 100000')
     url = database_url()
     with psycopg.connect(url, connect_timeout=5) as connection:
         if any(connection.execute('SELECT to_regclass(%s)', (f'photolab.{table}',)).fetchone()[0] is None
                for table in ('zip_product_bundles', 'zip_bundle_assets')):
             raise SystemExit('Apply database migration 006 before running the worker.')
-    done, errors = run(args.directory, url, artifact_root(), args.source, args.checkpoint, args.limit)
+    done, errors = run(args.directory, url, artifact_root(), args.source, args.checkpoint, args.limit,
+                       int(args.min_free_gib * 1024**3))
     print(f'Finished: completed={done} errors={errors}', flush=True)
     if errors:
         raise SystemExit(1)

@@ -48,6 +48,17 @@ def test_worker_does_not_mark_failed_batch_complete(tmp_path, monkeypatch):
     assert len(calls) == 2
 
 
+def test_worker_stops_before_import_when_disk_is_low(tmp_path, monkeypatch):
+    source = tmp_path / 'source'
+    source.mkdir()
+    (source / 'a.zip').write_bytes(zip_bytes())
+    monkeypatch.setattr(import_worker.shutil, 'disk_usage', lambda path: type('Disk', (), {'free': 1})())
+    monkeypatch.setattr(import_worker, 'import_batch', lambda *args: pytest.fail('must not import'))
+    with pytest.raises(import_worker.LowDiskSpaceError, match='insufficient free space'):
+        import_worker.run(source, 'db', tmp_path / 'artifacts', 'source', tmp_path / 'state.sqlite3',
+                          min_free_bytes=2)
+
+
 def test_companion_files_are_persisted_with_names_and_hashes(tmp_path, monkeypatch):
     saved = []
     class Connection:

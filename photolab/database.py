@@ -248,6 +248,16 @@ def register_file_import(
                         (private_artifact_path, file_id),
                     )
                 if photometry_data is not None:
+                    if duplicate:
+                        # A later parser may accept a previously rejected source.
+                        # Never overwrite an already stored photometric result.
+                        cursor.execute(
+                            '''UPDATE photolab.photometry_files SET format = %s,
+                               quality_status = %s, quality_report = %s
+                               WHERE id = %s AND NOT EXISTS
+                               (SELECT 1 FROM photolab.photometries WHERE file_id = %s)''',
+                            (format_name, quality_report.status, Jsonb(report_payload), file_id, file_id),
+                        )
                     cursor.execute(
                         """INSERT INTO photolab.photometries
                            (file_id, application_version, data) VALUES (%s, %s, %s)

@@ -2,12 +2,24 @@
 
 ## Przygotowany worker katalogów producentów
 
+Jeśli nowszy parser odczyta ponownie importowany plik, który wcześniej nie
+miał zapisanego modelu fotometrii, jego bieżący raport jakości i format są
+aktualizowane w tej samej transakcji co zapis fotometrii i indeksu. Istniejący
+model fotometrii nie jest nadpisywany. Raport pierwotnej partii pozostaje
+historyczny. Ponowny import wymaga nowego checkpointu lub innej ścieżki źródła;
+tworzy nową partię i aliasy, ale oryginały są deduplikowane po SHA-256.
+
 `photolab.import_worker` przeszukuje podkatalogi, importuje jeden ZIP naraz
 i zapisuje punkt wznowienia w lokalnym SQLite. Po ukończeniu ZIP-a ponowne
 uruchomienie pomija go, jeżeli rozmiar i czas modyfikacji nie uległy zmianie.
 Błędne ZIP-y są ponawiane; częściowo zapisane partie mogą pozostać w bazie.
 Przerwanie po zapisaniu partii, lecz przed punktem wznowienia, również może
 utworzyć ponowną partię i aliasy; fotometria jest deduplikowana po SHA-256.
+Przed rozpoczęciem kolejnego archiwum worker sprawdza wolne miejsce na dysku
+checkpointu i domyślnie zatrzymuje się poniżej 5 GiB. Próg zmienia opcja
+`--min-free-gib`; nie monitoruje ona innych dysków, na których mogą leżeć
+PostgreSQL lub magazyn artefaktów. Po zatrzymaniu można wznowić pracę tym
+samym poleceniem i checkpointem po zwolnieniu miejsca.
 
 Worker grupuje IES/LDT/JPG/JPEG/PNG i JSON według wspólnej ścieżki i nazwy
 bez rozszerzenia oraz zapisuje je w tabelach `photolab.zip_product_bundles`

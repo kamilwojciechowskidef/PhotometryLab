@@ -10,6 +10,8 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 Przygotowany worker importu ZIP z podfolderów i punktem wznowienia opisano w
 [dokumentacji importu](docs/BULK_IMPORT.md); wymaga migracji `006`.
+Ponowny import może uzupełnić wynik dla wcześniej odrzuconego pliku, który
+odczytuje nowszy parser; nie nadpisuje istniejącej zapisanej fotometrii.
 
 - [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
   `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki i luks na osi.
