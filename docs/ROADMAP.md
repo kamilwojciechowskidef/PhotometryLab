@@ -6,6 +6,10 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Obsługa LDT o jednej płaszczyźnie dla symetrii obrotowej oraz regularnej
+  siatki IES bez zduplikowanego punktu C=360°. Dodano testy numeryczne granicy
+  C=0/360; konieczna jest dalsza walidacja na danych referencyjnych producentów.
+
 - [x] Przygotowanie workera ZIP z punktem wznowienia i zapisem plików
   towarzyszących. Próba na bazie i walidacja wielkoskalowa pozostają do wykonania.
 

@@ -47,3 +47,39 @@ def test_ldt_complete_nonuniform_symmetry_domain(symmetry, planes, queries, expe
     item = load_photometry("complete.ldt", ldt_with_planes(symmetry, planes))
     actual = sample(item, np.array(queries), np.array([0.]))
     np.testing.assert_allclose(actual[:, 0], expected)
+
+
+def test_ldt_radial_single_plane_is_sampled_at_every_azimuth():
+    item = load_photometry('radial.ldt', ldt_with_planes(1, [0]))
+    assert item.symmetry == 'radial'
+    np.testing.assert_allclose(item.intensity, [[100, 10]])
+    np.testing.assert_allclose(sample(item, np.array([0, 90, 270]), np.array([0, 90])),
+                               [[100, 10], [100, 10], [100, 10]])
+
+
+def test_ldt_single_plane_requires_radial_symmetry():
+    with pytest.raises(PhotometryError, match='invalid grid dimensions'):
+        load_photometry('invalid.ldt', ldt_with_planes(0, [0]))
+
+
+def ies_with_planes(planes):
+    values = [[100, 10 + i * 10] for i in range(len(planes))]
+    rows = ['IESNA91', 'TILT=NONE', f'1 -1 1 2 {len(planes)} 1 2 0 0 0',
+            '1 1 20', '0 90', ' '.join(map(str, planes))]
+    rows.extend(' '.join(map(str, row)) for row in values)
+    return ('\n'.join(rows) + '\n').encode()
+
+
+def test_ies_periodic_grid_interpolates_across_zero():
+    planes = list(range(0, 360, 15))
+    item = load_photometry('periodic.ies', ies_with_planes(planes))
+    assert item.symmetry == 'none'
+    assert item.c_angles[-1] == 345
+    np.testing.assert_allclose(sample(item, np.array([345, 352.5, 0, 360]), np.array([90]))[:, 0],
+                               [240, 125, 10, 10])
+
+
+@pytest.mark.parametrize('planes', [[0, 30, 90, 180, 270], [0, 90, 180, 270, 350], [0, 90, 180, 300]])
+def test_ies_rejects_incomplete_or_nonuniform_periodic_grid(planes):
+    with pytest.raises(PhotometryError, match='horizontal angle range'):
+        load_photometry('incomplete.ies', ies_with_planes(planes))

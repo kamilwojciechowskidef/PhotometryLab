@@ -98,6 +98,9 @@ def _ies(filename: str, text: str) -> Photometry:
     if not np.isclose(c[0], 0, atol=0.001):
         raise PhotometryError("IES: the first horizontal angle must be C=0°.")
     endpoint = float(c[-1])
+    periodic_without_endpoint = (nh >= 4 and 180 < endpoint < 360
+        and np.allclose(np.diff(np.r_[c, c[0] + 360]), 360 / nh,
+                        rtol=0, atol=0.001))
     if nh == 1 and np.isclose(endpoint, 0, atol=0.001):
         symmetry = "radial"
     elif np.isclose(endpoint, 90, atol=0.001):
@@ -105,6 +108,8 @@ def _ies(filename: str, text: str) -> Photometry:
     elif np.isclose(endpoint, 180, atol=0.001):
         symmetry = "plane0"
     elif np.isclose(endpoint, 360, atol=0.001):
+        symmetry = "none"
+    elif periodic_without_endpoint:
         symmetry = "none"
     else:
         raise PhotometryError("IES: unknown horizontal angle range (0, 90, 180, or 360°).")
@@ -116,6 +121,9 @@ def _ies(filename: str, text: str) -> Photometry:
         raise PhotometryError("IES: horizontal angles are not strictly increasing.")
     watts = values[12]
     flux = lamps * values[1] if lamps > 0 and values[1] > 0 else None
+    warnings = ["The flux in an IES header may describe the lamp flux rather than the luminaire flux; it is not a confirmed luminaire flux."] if flux else []
+    if periodic_without_endpoint:
+        warnings.append("The evenly spaced horizontal grid omits the duplicate 360° plane; values across 0° are interpolated periodically.")
     return Photometry(
         filename=filename, format="IES LM-63 / typ C",
         manufacturer=attributes.get("MANUFAC", "Niepodany"),
@@ -123,7 +131,7 @@ def _ies(filename: str, text: str) -> Photometry:
         c_angles=c, gamma_angles=gamma, intensity=intensity, symmetry=symmetry,
         unit="cd", to_cd=1.0, power_w=watts if watts > 0 else None,
         source_flux_lm=flux,
-        warnings=["The flux in an IES header may describe the lamp flux rather than the luminaire flux; it is not a confirmed luminaire flux."] if flux else [],
+        warnings=warnings,
     )
 
 
@@ -137,7 +145,8 @@ def _ldt(filename: str, text: str) -> Photometry:
     nsets = _integer(lines[25], "number of lamp sets")
     if sym not in range(5):
         raise PhotometryError("LDT: unknown Isym symmetry code.")
-    if not (4 <= mc <= 1000 and 2 <= ng <= 1000 and mc*ng <= 200_000):
+    if not ((4 <= mc <= 1000 or (sym == 1 and mc == 1))
+            and 2 <= ng <= 1000 and mc*ng <= 200_000):
         raise PhotometryError("LDT: invalid grid dimensions.")
     if not (1 <= nsets <= 20):
         raise PhotometryError("LDT: the number of lamp sets must be between 1 and 20.")
