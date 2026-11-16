@@ -142,6 +142,23 @@ def test_import_persists_photometry_for_new_and_existing_files(monkeypatch, dupl
     assert len(feature_params[3]) == 684
 
 
+def test_successful_duplicate_refreshes_only_missing_photometry(monkeypatch):
+    cursor = FakeCursor([(10,), None, (20,), (30,)])
+    monkeypatch.setattr('photolab.database.psycopg.connect', lambda url: FakeConnection(cursor))
+    content = make_ies('Test', 'oval')
+    item = load_photometry('test.ies', content)
+    report = QualityReport('test.ies', 'valid', True, True, ())
+    register_file_import('unused', original_filename='test.ies', content=content,
+                         format_name=item.format, quality_report=report,
+                         application_version='test', photometry=item)
+    statement, params = next((sql, args) for sql, args in cursor.calls
+                             if 'quality_status = %s' in sql)
+    assert 'NOT EXISTS' in statement
+    assert params[1] == 'valid'
+    assert params[2].obj['comparison_ready'] is True
+    assert params[3:] == (20, 20)
+
+
 def test_load_stored_photometry(monkeypatch):
     item = load_photometry('test.ies', make_ies('Test', 'oval'))
     cursor = FakeCursor([(1, photometry_to_data(item)), None])

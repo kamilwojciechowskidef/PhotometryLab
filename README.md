@@ -8,6 +8,11 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+Przygotowany worker importu ZIP z podfolderów i punktem wznowienia opisano w
+[dokumentacji importu](docs/BULK_IMPORT.md); wymaga migracji `006`.
+Ponowny import może uzupełnić wynik dla wcześniej odrzuconego pliku, który
+odczytuje nowszy parser; nie nadpisuje istniejącej zapisanej fotometrii.
+
 `Saved catalogue` zawiera read-only podgląd domyślnego checkpointu workera ZIP;
 znaczenie liczników i ograniczenia opisuje [import wsadowy](docs/BULK_IMPORT.md).
 
@@ -102,6 +107,12 @@ With rotation alignment enabled, the candidate matrix is shifted along the C axi
 
 - **IES:** the matrix is in `cd` after applying the `candela multiplier`. Header flux, when available, is stored as source luminous flux rather than verified luminaire luminous flux.
 - **LDT:** the matrix is in `cd/klm`; conversion to `cd` uses the lamp count, lamp flux, and conversion factor fields. For multiple lamp sets, the code sums their reference fluxes and issues a warning. This interpretation requires verification against reference files. Shape comparison remains possible when the conversion scale is unavailable.
+
+Parser obsługuje LDT z jedną płaszczyzną C przy zadeklarowanej symetrii
+obrotowej oraz równomierną siatkę IES bez powtórzonego punktu 360° (np.
+0–345° co 15°). Na granicy 0° stosowana jest interpolacja okresowa; krok siatki
+ogranicza dokładność. Nie dowodzi to pełnej zgodności z wszystkimi wariantami
+formatów. Zerowy współczynnik konwersji LDT nadal powoduje odrzucenie pliku.
 - **Estimated downward luminous flux:** a numerical approximation of the integral `I(C, γ) sin(γ) dγ dC` for γ = 0–90°, with angles in radians. The code uses trapezoidal integration on a grid with C steps of 5° and γ steps of 2.5°. The result in lumens is available when the gamma range is covered and conversion to `cd` is known. It is neither a manufacturer declaration nor the total luminaire luminous flux.
 
 ## Key limitations of version 0.1

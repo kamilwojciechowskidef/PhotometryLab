@@ -19,6 +19,7 @@ dist/
 *.egg-info/
 
 # Private/manufacturer-sourced experiment data (opt-in explicitly)
+/zip/
 data/raw/
 data/private/
 experiments/runs/

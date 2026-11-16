@@ -89,3 +89,22 @@ def test_report_failure_stops_batch(monkeypatch, tmp_path):
     monkeypatch.setattr(bulk, 'update_batch', fail)
     with pytest.raises(bulk.DatabaseError):
         bulk.import_batch('unused', [bulk.BatchFile('note.txt', None, 'unsupported')], tmp_path, 'test', 'test')
+
+
+def test_reused_connection_commits_each_report(monkeypatch, tmp_path):
+    calls = []
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def execute(self, sql, params): calls.append(('update', params[0].obj.copy()))
+        def commit(self): calls.append(('commit',))
+    def connect(*args, **kwargs):
+        calls.append(('connect',))
+        return Connection()
+    monkeypatch.setattr(bulk, 'create_batch', lambda *args: 42)
+    monkeypatch.setattr(bulk.psycopg, 'connect', connect)
+    files = [bulk.BatchFile('a.txt', None, 'unsupported'), bulk.BatchFile('b.txt', None, 'unsupported')]
+    _, report = bulk.import_batch('unused', files, tmp_path, 'test', 'test', reuse_connection=True)
+    assert len(report) == 2
+    assert [call[0] for call in calls] == ['connect', 'update', 'commit', 'update', 'commit']
+    assert [len(call[1]) for call in calls if call[0] == 'update'] == [1, 2]
