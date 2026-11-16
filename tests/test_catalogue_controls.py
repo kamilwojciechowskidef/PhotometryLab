@@ -4,14 +4,19 @@ from photolab.catalogue_controls import add_to_comparison, select_page
 
 
 class Stub:
-    def __init__(self, range_choice=1):
+    def __init__(self, range_choice=1, subrange_choice=1):
         self.range_choice = range_choice
+        self.subrange_choice = subrange_choice
         self.calls = []
 
     def selectbox(self, label, options, **kwargs):
         options = list(options)
         self.calls.append((label, options))
-        return self.range_choice if label == 'Page range' else options[-1]
+        if label == 'Page range':
+            return self.range_choice
+        if label == 'Page range (100 pages)':
+            return self.subrange_choice
+        return options[-1]
 
 
 def test_page_dropdown_never_lists_nonexistent_pages():
@@ -21,11 +26,18 @@ def test_page_dropdown_never_lists_nonexistent_pages():
 
 
 def test_three_million_records_have_bounded_page_options():
-    stub = Stub(range_choice=60)
+    stub = Stub(range_choice=60, subrange_choice=10)
     assert select_page(stub, 3_000_000, key='test') == 60_000
     assert len(stub.calls[0][1]) == 60
-    assert stub.calls[1][1][0] == 59_001
-    assert len(stub.calls[1][1]) == 1000
+    assert len(stub.calls[1][1]) == 10
+    assert stub.calls[2][1][0] == 59_901
+    assert len(stub.calls[2][1]) == 100
+
+
+def test_partial_range_has_only_existing_pages():
+    stub = Stub(range_choice=2, subrange_choice=2)
+    assert select_page(stub, 55_050, key='test') == 1101
+    assert stub.calls[-1][1] == [1101]
 
 
 def test_empty_catalogue_has_single_page():

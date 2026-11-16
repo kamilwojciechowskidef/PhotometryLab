@@ -6,6 +6,7 @@ from .database import count_catalogue, list_catalogue_manufacturers
 
 PAGE_SIZE = 50
 PAGES_PER_RANGE = 1000
+PAGES_PER_SUBRANGE = 100
 BRAND_LIMIT = 500
 MAX_COMPARISON_FILES = 20
 
@@ -55,7 +56,7 @@ def get_brands(url, search=''):
 
 
 def select_page(st, total, *, key):
-    """Select a real page; at most 1000 page options are sent to the browser."""
+    """Select a page through bounded 1000-page and 100-page ranges."""
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     blocks = (pages + PAGES_PER_RANGE - 1) // PAGES_PER_RANGE
     block = 1
@@ -64,4 +65,14 @@ def select_page(st, total, *, key):
             format_func=lambda b: f'{(b-1)*PAGES_PER_RANGE+1}–{min(b*PAGES_PER_RANGE, pages)}')
     first = (block - 1) * PAGES_PER_RANGE + 1
     last = min(block * PAGES_PER_RANGE, pages)
-    return st.selectbox('Catalogue page', range(first, last + 1), key=f'{key}_{block}')
+    subranges = (last - first + PAGES_PER_SUBRANGE) // PAGES_PER_SUBRANGE
+    subrange = 1
+    if subranges > 1:
+        subrange = st.selectbox('Page range (100 pages)', range(1, subranges + 1),
+                                key=f'{key}_subrange_{block}',
+                                format_func=lambda n: f'{first+(n-1)*PAGES_PER_SUBRANGE}–'
+                                                      f'{min(first+n*PAGES_PER_SUBRANGE-1, last)}')
+    start = first + (subrange - 1) * PAGES_PER_SUBRANGE
+    end = min(start + PAGES_PER_SUBRANGE - 1, last)
+    page_key = f'{key}_{block}' if subrange == 1 else f'{key}_{block}_{subrange}'
+    return st.selectbox('Catalogue page', range(start, end + 1), key=page_key)

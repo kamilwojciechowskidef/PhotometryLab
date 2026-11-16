@@ -109,7 +109,8 @@ Rozwija przeglądarkę zapisanej fotometrii. `Find manufacturer` zawęża listę
 marek, `Manufacturer` wybiera dokładną markę, a `Catalogue number or model
 contains` szuka fragmentu numeru lub opisu. `Catalogue page` jest listą
 rozwijaną istniejących stron, po maksymalnie 50 rekordów. Przy więcej niż
-1000 stron pojawia się dodatkowa lista zakresów stron.
+100 stron pojawia się lista zakresów po 100 stron, a przy więcej niż 1000
+także lista zakresów po 1000 stron.
 
 Tabela pokazuje ID, markę i numer katalogowy albo dostępny opis. Pole
 `Choose saved luminaires on this page` wybiera rekordy, a przycisk
