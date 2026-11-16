@@ -4,13 +4,27 @@ import numpy as np
 import pytest
 
 from photolab.diagnostics import diagnose, distance_rows, half_maximum_width
-from photolab.diagnostics_ui import polar_figure, beam_figure, beam_schematic_figure
+from photolab.diagnostics_ui import polar_figure, beam_figure, beam_schematic_figure, distribution_figures
 from photolab.models import Photometry
 
 
 def radial(gamma=(0, 20, 40, 90), values=(1000, 500, 0, 0), unit='cd', to_cd=1):
     return Photometry('synthetic.ies', 'test', 'SYNTHETIC', 'test', np.array([0.]),
                       np.array(gamma), np.array([values]), 'radial', unit, to_cd).validate()
+
+
+def test_single_luminaire_distribution_figures_use_comparison_grid():
+    sections, heatmap = distribution_figures(radial())
+    assert [trace.name for trace in sections.data] == ['C0', 'C90']
+    assert sections.data[0].y[4] == pytest.approx(0.5)  # gamma=20 degrees
+    np.testing.assert_allclose(sections.data[0].y, sections.data[1].y)
+    assert np.asarray(heatmap.data[0].z).shape == (36, 19)
+    assert heatmap.data[0].z[0][4] == pytest.approx(0.5)
+
+
+def test_distribution_figures_reject_missing_gamma_coverage():
+    with pytest.raises(ValueError, match='cover'):
+        distribution_figures(radial((20, 90), (100, 0)))
 
 
 def test_known_symmetric_beam_width_and_inverse_square_lux():
@@ -193,7 +207,7 @@ from photolab.diagnostics_ui import render_diagnostics
 render_diagnostics(st, [load_photometry('synthetic.ies', make_ies('Test', 'narrow'))])
 ''').run(timeout=20)
     assert not app.exception
-    assert len(app.get('plotly_chart')) == 3
+    assert len(app.get('plotly_chart')) == 5
     assert len(app.get('download_button')) == 3
     assert app.dataframe[0].value['FWHM [°]'].notna().all()
     app.selectbox[1].select('Normalized to native maximum').run(timeout=20)

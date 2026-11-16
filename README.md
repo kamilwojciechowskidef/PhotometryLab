@@ -32,7 +32,8 @@ pojedyncze oprawy w zestawie porównawczym sesji.
 
 - [Diagnostyka fotometryczna](docs/PHOTOMETRIC_DIAGNOSTICS.md) — nowa zakładka
   `Photometric diagnostics`: wykres biegunowy, FWHM, projekcja wiązki, schemat
-  szerokości w kolejnych odległościach i luks na osi.
+  szerokości w kolejnych odległościach, luks na osi, przekroje C0/C90 i mapa
+  znormalizowanego rozsyłu dla pojedynczej oprawy.
 
 Multiple ZIP uploads and sequential directory import are described in
 [Import wsadowy](docs/BULK_IMPORT.md).
