@@ -14,7 +14,6 @@ from photolab.database import list_sources
 from photolab.analysis import (C_GRID, GAMMA_GRID, compare, embedding,
                                estimated_downward_lumens, find_similar,
                                shape_matrix)
-from photolab.demo import samples
 from photolab.database import DatabaseError, database_url, register_file_import
 from photolab.database import list_catalogue, load_stored_photometries
 from photolab.indexing import rank_catalogue
@@ -32,20 +31,19 @@ st.set_page_config(page_title="PhotometryLab | Photometric Analysis", page_icon=
 
 st.title("💡 PhotometryLab")
 st.caption("Research version 0.1 · IES and LDT comparison · All calculations run locally")
-st.write("Upload photometric files, choose a reference luminaire, and compare its distribution with the others.")
+st.write("Choose a luminaire from the catalogue or upload files, then inspect and compare their photometry.")
+st.header('1. Catalogue and file selection')
+files = st.file_uploader("Upload .ies and .ldt files", type=["ies", "ldt"], accept_multiple_files=True,
+                         help="Maximum size: 5 MB per file. Files are not sent to an external AI API.")
 
 with st.sidebar:
-    st.header("1. Luminaire set")
-    files = st.file_uploader("Upload .ies and .ldt files", type=["ies", "ldt"], accept_multiple_files=True,
-                             help="Maximum size: 5 MB per file. Files are not sent to an external AI API.")
-    with_demo = st.checkbox("Include synthetic demonstration files", value=not bool(files),
-                            help="Samples are for testing the application, not for scientific conclusions.")
+    st.header("Analysis settings")
     allow_rotation = st.checkbox("Align C rotation (10° steps)", value=True,
                                  help="Aligns different manufacturer orientations of photometric coordinate systems.")
     st.divider()
     st.caption("Supported: IES LM-63 Type C with TILT=NONE and selected EULUMDAT LDT variants. Unsupported files are explicitly rejected.")
 
-payload: dict[str, bytes] = samples() if with_demo else {}
+payload: dict[str, bytes] = {}
 uploaded_records: dict[str, tuple[str, bytes]] = {}
 for upload in files or []:
     original_name = upload.name
@@ -177,18 +175,34 @@ if excluded:
 st.warning("**Interpretation:** The ranking compares primarily the **distribution shape**, not full luminaire equivalence. "
            "Selecting a replacement also requires checking flux, power, colour, geometry, protection class, and lighting calculations.")
 
-t0, t1, t3, t4 = st.tabs(["Catalogue and data quality", "Comparison and ranking",
-                          "ML exploration (experimental)", "Photometric diagnostics"])
+t0 = st.container()
+requested_reference = session_state.pop('select_catalogue_reference', None)
+report_names = [report.filename for report in quality_reports]
+if requested_reference is not None:
+    prefix = f'[DB {requested_reference}] '
+    match = next((name for name in report_names if name.startswith(prefix)), None)
+    if match is not None:
+        session_state['ref_file'] = match
+items_by_filename = {item.filename: item for item in parsed}
+selected = None
+if report_names:
+    selected = st.selectbox('Selected luminaire for quality, diagnostics and comparison', report_names,
+                            key='ref_file', format_func=lambda name: product_label(items_by_filename[name])
+                            if name in items_by_filename else name)
+selected_item = items_by_filename.get(selected)
+selected_report = reports_by_filename.get(selected)
+ref = selected_item if any(item is selected_item for item in eligible) else None
+tquality, t4, t1, t3 = (st.container() for _ in range(4))
 
 with t0:
     st.subheader('Saved photometry catalogue')
-    st.caption('Persistent catalogue from PostgreSQL. ZIP imports and individually saved files remain available after restarting the app.')
+    st.caption('Choose a saved luminaire and add it to your set to use it in all analyses. No upload is required.')
     if st.checkbox('Show folder import progress', value=False, key='show_import_progress'):
         from photolab.import_monitor_ui import render_import_monitor
         render_import_monitor(st)
     if selected_catalogue:
         st.subheader(f'Saved comparison set ({len(selected_catalogue)} / {MAX_COMPARISON_FILES})')
-        st.caption('Selection belongs to this browser session. Uploaded and demonstration files are managed separately.')
+        st.caption('Selection belongs to this browser session. Uploaded files are managed separately.')
         remove_ids = st.multiselect('Remove saved files from comparison', list(selected_catalogue),
             format_func=lambda file_id: selected_catalogue[file_id]['label'], key='main_remove_selection')
         if st.button('Remove selected from comparison', key='main_remove_catalogue'):
@@ -250,6 +264,17 @@ with t0:
                                         f"{main_choices[key].get('catalogue_number') or main_choices[key]['model'] or 'Unavailable'}",
                 key='catalogue_main_file')
             st.caption(f"Original filename: {main_choices[main_file]['filename']}")
+            if st.button('Add this luminaire to analysis', key='main_add_displayed'):
+                try:
+                    added = add_to_comparison(selected_catalogue, [main_file], main_choices)
+                    session_state['select_catalogue_reference'] = main_file
+                    session_state['main_catalogue_message'] = (
+                        'Luminaire added to your analysis set.' if added else
+                        'Luminaire is already in your analysis set.'
+                    )
+                    st.rerun()
+                except ValueError as error:
+                    st.warning(str(error))
             if st.checkbox('Show associated ZIP assets', key='catalogue_assets'):
                 from photolab.zip_products import list_related_bundles, load_bundle, preview_image
                 try:
@@ -280,21 +305,15 @@ with t0:
         st.info(f'Catalogue unavailable: {error}')
 
 with t4:
+    st.header('3. Photometric diagnostics')
     from photolab.diagnostics_ui import render_diagnostics
-    render_diagnostics(st, parsed)
+    render_diagnostics(st, [selected_item] if selected_item is not None else [], selected=selected)
 
 with t1:
-    if eligible:
+    st.header('4. Comparison and ranking')
+    if ref is not None:
         eligible_by_filename = {i.filename: i for i in eligible}
-        requested_reference = session_state.pop('select_catalogue_reference', None)
-        if requested_reference is not None:
-            prefix = f'[DB {requested_reference}] '
-            match = next((item.filename for item in eligible if item.filename.startswith(prefix)), None)
-            if match is not None:
-                session_state['ref_file'] = match
-        selected = st.selectbox("Reference luminaire", list(eligible_by_filename), key="ref_file",
-                                format_func=lambda name: product_label(eligible_by_filename[name]))
-        ref = next(i for i in eligible if i.filename == selected)
+        st.caption(f'Reference: {product_label(ref)}')
         if st.button("Search indexed catalogue", key="search_indexed_catalogue"):
             try:
                 catalogue_search = rank_catalogue(database_url(), ref, allow_rotation=allow_rotation)
@@ -320,7 +339,7 @@ with t1:
                     )
             except (DatabaseError, ValueError) as error:
                 st.error(str(error))
-    if len(eligible) < 2:
+    if ref is None or len(eligible) < 2:
         st.info("Local ranking requires at least two files with γ = 0–90° data. Indexed catalogue search works with one reference file.")
     else:
         results = find_similar(ref, eligible, allow_rotation)
@@ -364,13 +383,13 @@ with t1:
                         xaxis_title="γ [°]", yaxis_title="C [°]", margin=dict(l=20,r=20,t=50,b=20))
         st.plotly_chart(h, width='stretch')
 
-with t0:
+with tquality:
     st.divider()
-    st.subheader('Data quality for the current luminaire set')
-    st.caption('This report covers the files currently loaded or selected for comparison.')
+    st.header('2. Data quality')
+    st.caption('This report describes the selected luminaire.')
     table_rows = []
     items_by_filename = {item.filename: item for item in parsed}
-    for report in quality_reports:
+    for report in [selected_report] if selected_report is not None else []:
         item = items_by_filename.get(report.filename)
         down = estimated_downward_lumens(item) if item is not None else None
         table_rows.append({
@@ -397,14 +416,18 @@ with t0:
             'Power [W]': 'Float64', 'Header flux [lm]': 'Float64',
             'Calculated downward flux [lm]': 'Float64',
         })
-    st.dataframe(quality_df, width='stretch', hide_index=True)
-    st.caption('Missing numeric values are shown as empty cells and exported as empty CSV fields; they are not zero.')
-    st.download_button("Download quality report CSV", quality_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
-                       file_name="import_quality_report.csv", mime="text/csv")
+    if quality_df.empty:
+        st.info('Your analysis set is empty. Choose a saved luminaire above and click '
+                '“Add this luminaire to analysis”, or upload a photometry file in the sidebar.')
+    else:
+        st.dataframe(quality_df, width='stretch', hide_index=True)
+        st.caption('Missing numeric values are shown as empty cells and exported as empty CSV fields; they are not zero.')
+        st.download_button("Download quality report CSV", quality_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
+                           file_name="import_quality_report.csv", mime="text/csv")
     st.caption("Downward flux is a numerical estimate from the intensity distribution in cd; the header value may have a different meaning. "
                "Neither value is a measurement result or a manufacturer-declared luminaire efficacy.")
     with st.expander("File warnings and limitations"):
-        for report in quality_reports:
+        for report in [selected_report] if selected_report is not None else []:
             if report.issues:
                 st.write(f"**{report.filename}** ({report.status})")
                 for note in report.issues:
@@ -414,7 +437,7 @@ with t0:
 
     st.divider()
     st.subheader("Local PostgreSQL catalogue")
-    st.caption("Only files uploaded in this session can be saved. Synthetic demonstration files are excluded. "
+    st.caption("Only files uploaded in this session can be saved. "
                "Original bytes are archived locally; PostgreSQL stores photometry, quality reports and source references.")
     if not uploaded_records:
         st.info("Upload at least one IES or LDT file to save it to the local catalogue.")
@@ -487,9 +510,10 @@ with t0:
             st.error(str(error))
 
 with t3:
+    st.header('5. ML exploration (experimental)')
     st.write("PCA projection and KMeans clustering are for **dataset exploration**. "
              "Isolation Forest anomaly detection runs with at least 8 files. "
-             "Results on demonstration samples are not an assessment of model performance.")
+             "Exploration results are not an assessment of model performance.")
     if len(eligible) < 3:
         st.info("At least 3 comparable luminaires are required.")
     else:
@@ -512,4 +536,4 @@ with t3:
                            "ml_results.csv", mime="text/csv")
 
 st.divider()
-st.caption("PhotometryLab 0.1 · Research use / prototype · Sample data are synthetic only")
+st.caption("PhotometryLab 0.1 · Research use / prototype")

@@ -1,5 +1,15 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
+## Układ jednej strony
+
+Aplikacja prowadzi kolejno przez wybór pliku z katalogu lub upload, ocenę
+jakości wybranej oprawy, jej diagnostykę, porównanie z innymi plikami w zestawie
+i eksperymentalną eksplorację ML. Lista wybranej oprawy po katalogu steruje
+jakością, diagnostyką oraz wzorcem porównania. Dodatkowe oprawy można dodać
+z bazy lub przez uploader. Raport jakości dotyczy wybranej oprawy; ML korzysta
+z całego kwalifikującego się zestawu. Opisy dawnych zakładek poniżej odnoszą
+się obecnie do sekcji strony.
+
 W zakładce **Catalogue and data quality** opcja **Show folder import progress** otwiera
 odczyt statusów importu folderowego. Przycisk **Refresh import progress**
 odświeża panel ręcznie. To podgląd domyślnego checkpointu bieżącej bazy, a nie
@@ -70,7 +80,7 @@ ostrzeżenie interpretacyjne i pięć zakładek.
 
 | Zbiór | Co zawiera | Gdzie go widać |
 |---|---|---|
-| Bieżący zestaw porównawczy | Wgrane pojedyncze IES/LDT, opcjonalne próbki demo i wybrane rekordy z bazy | Liczniki, ranking lokalny, wykresy, tabela jakości, ML |
+| Bieżący zestaw porównawczy | Wgrane pojedyncze IES/LDT i wybrane rekordy z bazy | Liczniki, ranking lokalny, wykresy, tabela jakości, ML |
 | Trwały katalog PostgreSQL | Zapisane pliki, fotometria, jakość, aliasy i cechy indeksu | `Browse saved catalogue`, wyszukiwanie indeksowe, historia importów |
 | Archiwum źródeł | Oryginalne bajty plików w lokalnym magazynie | `Browse source archive` |
 
@@ -89,12 +99,8 @@ Parser może odrzucić plik mimo prawidłowego rozszerzenia.
 Pliki o jednakowych nazwach otrzymują w sesji rozróżniający dopisek, np.
 `lampa (2).ies`. Nie oznacza to zmiany oryginalnej nazwy na dysku.
 
-### Include synthetic demonstration files
-
-Dołącza syntetyczne przykłady rozsyłów. Domyślnie opcja jest proponowana jako
-włączona, kiedy nie przesłano własnych plików. Stan checkboxa można zmienić.
-Przykłady nie są danymi producentów ani podstawą oceny skuteczności naukowej.
-Automatycznie dołączone demo są wyłączone z przycisku zapisu uploadów do bazy.
+Próbki syntetyczne pozostają dostępne w testach projektu, ale aplikacja nie
+dołącza ich do zestawu porównawczego.
 
 ### Align C rotation (10° steps)
 
@@ -117,8 +123,12 @@ Tabela pokazuje ID, markę i numer katalogowy albo dostępny opis. Pole
 `Add selected to comparison` dodaje je do bieżącego zestawu. Maksymalnie 20
 zapisanych fotometrii pozostaje wybranych podczas zmiany strony i filtrów;
 `Clear saved comparison set` czyści wybór. Pierwsza dodana oprawa staje się
-wzorcem zamiast przykładu demo. Nazwy otrzymują prefiks
+wzorcem porównania. Nazwy otrzymują prefiks
 `[DB id]`, aby odróżnić identyczne nazwy różnych rekordów.
+
+Można także wybrać pojedynczą oprawę w `Saved photometry details` i kliknąć
+`Add this luminaire to analysis`. Plik z katalogu jest wtedy dostępny w raporcie
+jakości, porównaniu i diagnostyce bez przesyłania własnego pliku.
 
 Po imporcie z osobnego procesu użyj `Refresh catalogue`, aby od razu odświeżyć
 bufor liczby wyników i producentów (w przeciwnym razie wygaśnie po maksymalnie
@@ -248,8 +258,8 @@ Porównanie kształtu może być możliwe przy braku wiarygodnego strumienia.
 ### Local PostgreSQL catalogue
 
 `Save uploaded files to PostgreSQL` zapisuje wyłącznie pliki przesłane
-uploaderem bocznym. Nie zapisuje ponownie wybranych rekordów DB ani automatycznie
-dołączonych demonstracji. Zapis zachowuje oryginalne bajty w archiwum, hash,
+uploaderem bocznym. Nie zapisuje ponownie wybranych rekordów DB. Zapis zachowuje
+oryginalne bajty w archiwum, hash,
 alias, raport jakości i dostępną fotometrię w bazie. Gotowa fotometria otrzymuje
 cechy aktualnego indeksu.
 

@@ -8,6 +8,10 @@ The application has a Polish interface and runs **locally**. It requires no acco
 
 ## Project documentation
 
+Interfejs prowadzi przez jedną stronę: katalog lub upload, jakość wybranej
+oprawy, diagnostykę, porównanie oraz eksperymentalną eksplorację ML. Wybrana
+oprawa jest wspólna dla jakości, diagnostyki i wzorca porównania.
+
 Przygotowany worker importu ZIP z podfolderów i punktem wznowienia opisano w
 [dokumentacji importu](docs/BULK_IMPORT.md); wymaga migracji `006`.
 Ponowny import może uzupełnić wynik dla wcześniej odrzuconego pliku, który
@@ -87,7 +91,7 @@ próbek nie oznaczają FWHM. Opis i wpływ na odtwarzalność benchmarków:
 5. Luminaire rankings, C0/C90 curve plots, distribution heatmaps, and ranking export to CSV.
 6. Exploratory PCA (2D), KMeans clustering, and optional anomaly flags using Isolation Forest (with at least 8 files).
 7. Numerical estimates of downward luminous flux when intensities can be reliably converted to cd, kept separate from flux metadata.
-8. Synthetic samples, including an LDT example, for checking application behavior and learning the interface.
+8. Synthetic samples, including an LDT example, for automated tests and development.
 9. A quality report that classifies every imported file as correct, limited, incomplete, unsupported, or damaged; it explicitly separates readiness for shape comparison from readiness for an absolute downward-flux estimate and can be exported to CSV.
 
 ## How the ranking works

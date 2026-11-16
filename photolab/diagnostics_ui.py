@@ -141,14 +141,15 @@ def beam_schematic_figure(rows, plane, radial=False):
     return figure
 
 
-def render_diagnostics(st, items):
+def render_diagnostics(st, items, selected=None):
     st.subheader('Single-luminaire photometric diagnostics')
     if not items:
         st.info('Upload one readable IES/LDT file or select a saved luminaire in the sidebar.')
         return
     by_filename = {item.filename: item for item in items}
-    selected = st.selectbox('Diagnostic luminaire', list(by_filename), key='diagnostic_file',
-                            format_func=lambda name: product_label(by_filename[name]))
+    if selected is None:
+        selected = st.selectbox('Diagnostic luminaire', list(by_filename), key='diagnostic_file',
+                                format_func=lambda name: product_label(by_filename[name]))
     item = next(item for item in items if item.filename == selected)
     st.caption(f"Brand: {item.manufacturer or 'unavailable'} · Catalogue number: {item.catalogue_number or 'unavailable'}")
     labels = {'Absolute intensity [cd]': 'absolute', 'Source units': 'source',
