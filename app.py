@@ -177,8 +177,8 @@ if excluded:
 st.warning("**Interpretation:** The ranking compares primarily the **distribution shape**, not full luminaire equivalence. "
            "Selecting a replacement also requires checking flux, power, colour, geometry, protection class, and lighting calculations.")
 
-t0, t1, t2, t3, t4 = st.tabs(["Saved catalogue", "Comparison and ranking", "Catalogue and data quality",
-                             "ML exploration (experimental)", "Photometric diagnostics"])
+t0, t1, t3, t4 = st.tabs(["Catalogue and data quality", "Comparison and ranking",
+                          "ML exploration (experimental)", "Photometric diagnostics"])
 
 with t0:
     st.subheader('Saved photometry catalogue')
@@ -364,7 +364,10 @@ with t1:
                         xaxis_title="γ [°]", yaxis_title="C [°]", margin=dict(l=20,r=20,t=50,b=20))
         st.plotly_chart(h, width='stretch')
 
-with t2:
+with t0:
+    st.divider()
+    st.subheader('Data quality for the current luminaire set')
+    st.caption('This report covers the files currently loaded or selected for comparison.')
     table_rows = []
     items_by_filename = {item.filename: item for item in parsed}
     for report in quality_reports:

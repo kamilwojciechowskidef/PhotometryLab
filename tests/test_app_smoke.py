@@ -66,6 +66,7 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
 def test_app_demo_flow(monkeypatch, include_rejected):
     import pyarrow as pa
     quality_tables = []
+    tab_labels = []
     def check_arrow(data, **kwargs):
         arrow = pa.Table.from_pandas(data, preserve_index=False)
         if 'Header flux [lm]' in data.columns:
@@ -89,7 +90,10 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk', 'catalogue_assets', 'show_import_progress') else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
-    stub.tabs = lambda labels: [nullcontext() for _ in labels]
+    def tabs(labels):
+        tab_labels.extend(labels)
+        return [nullcontext() for _ in labels]
+    stub.tabs = tabs
     stub.columns = lambda count: [SimpleNamespace(metric=noop) for _ in range(count)]
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
@@ -101,6 +105,8 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
     assert len(quality_tables) == 1
+    assert tab_labels == ['Catalogue and data quality', 'Comparison and ranking',
+                          'ML exploration (experimental)', 'Photometric diagnostics']
 
 
 def test_app_exports_quality_report_for_rejected_file(monkeypatch):

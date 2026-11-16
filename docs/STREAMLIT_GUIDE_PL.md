@@ -1,6 +1,6 @@
 # PhotometryLab — szczegółowa instrukcja interfejsu Streamlit
 
-W zakładce **Saved catalogue** opcja **Show folder import progress** otwiera
+W zakładce **Catalogue and data quality** opcja **Show folder import progress** otwiera
 odczyt statusów importu folderowego. Przycisk **Refresh import progress**
 odświeża panel ręcznie. To podgląd domyślnego checkpointu bieżącej bazy, a nie
 sterowanie workerem; nie pokazuje całkowitej liczby ZIP-ów ani czasu pozostałego.
@@ -11,7 +11,7 @@ Aktualizacja nawigacji: import ZIP znajduje się teraz w panelu bocznym pod
 Przeglądarka używa listy producentów i stron. Starsze wpisy mogą pokazywać opis
 zamiast numeru katalogowego.
 
-Aktualizacja importu ZIP: pierwsza zakładka **Saved catalogue** pokazuje trwale
+Aktualizacja importu ZIP: pierwsza zakładka **Catalogue and data quality** pokazuje trwale
 zapisane fotometrie bez zaznaczania opcji w panelu bocznym. Po wybraniu pozycji
 **Show associated ZIP assets** pokazuje jej zestawy z nowych importów, JSON
 i dostępne zdjęcie. Wymaga migracji `006`; starsze importy nie otrzymują
@@ -202,7 +202,11 @@ Mapa cieplna przedstawia wyłącznie wzorzec. Oś X to γ, oś Y to C. Kolor
 oznaczają wyższe wartości. Nie jest to mapa natężenia oświetlenia na podłożu
 ani widok 3D. W aktualnym układzie pojawia się razem z porównaniem pary.
 
-## 6. Catalogue and data quality — dane i kontrola jakości
+## 6. Catalogue and data quality — katalog i kontrola jakości
+
+Wspólna zakładka łączy przeglądanie zapisanego katalogu z raportem jakości
+bieżącego zestawu opraw. Raport dotyczy wczytanych lub wybranych plików,
+nie całej zawartości bazy danych.
 
 Główna tabela opisuje bieżący zestaw, a nie cały katalog PostgreSQL.
 

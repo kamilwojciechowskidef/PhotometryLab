@@ -13,10 +13,10 @@ Przygotowany worker importu ZIP z podfolderów i punktem wznowienia opisano w
 Ponowny import może uzupełnić wynik dla wcześniej odrzuconego pliku, który
 odczytuje nowszy parser; nie nadpisuje istniejącej zapisanej fotometrii.
 
-`Saved catalogue` zawiera read-only podgląd domyślnego checkpointu workera ZIP;
+`Catalogue and data quality` zawiera read-only podgląd domyślnego checkpointu workera ZIP;
 znaczenie liczników i ograniczenia opisuje [import wsadowy](docs/BULK_IMPORT.md).
 
-W głównym `Saved catalogue` można wybrać producenta z listy, filtrować numer
+W zakładce `Catalogue and data quality` można wybrać producenta z listy, filtrować numer
 katalogowy, odświeżyć dane po imporcie z osobnego procesu oraz dodawać i usuwać
 pojedyncze oprawy w zestawie porównawczym sesji.
 

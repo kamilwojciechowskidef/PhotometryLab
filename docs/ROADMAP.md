@@ -123,6 +123,9 @@ pozostają do wykonania.
 
 ## P4 — finalizacja produktu i pracy
 
+- [x] Połączenie katalogu zapisanych opraw i raportu jakości bieżącego zestawu
+  w jednej zakładce interfejsu.
+
 - [ ] Dopracowane komunikaty, instrukcja instalacji i eksport raportu porównawczego.
 - [ ] Scenariusze testów użyteczności dla projektantów oświetlenia.
 - [ ] Wykresy/tabele do rozdziałów pracy, metodyka, architektura, omówienie ograniczeń.
