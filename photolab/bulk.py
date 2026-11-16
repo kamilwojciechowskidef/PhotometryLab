@@ -1,5 +1,6 @@
 """Bounded batch ingestion with explicit outcomes and persistent reports."""
 from dataclasses import dataclass
+from contextlib import nullcontext
 from io import BytesIO
 from pathlib import PurePosixPath, PureWindowsPath
 import stat
@@ -109,23 +110,37 @@ def create_batch(url, description, version, count):
         raise DatabaseError('Cannot create batch. Check connection and migration 004.') from None
 
 
-def update_batch(url, batch_id, report, finished=False):
+def update_batch(url, batch_id, report, finished=False, connection=None):
     status = ('completed_with_errors' if any(r['outcome'] in ('error', 'skipped', 'rejected') for r in report)
               else 'completed') if finished else 'running'
     try:
-        with psycopg.connect(url, connect_timeout=5) as connection:
-            connection.execute('''UPDATE photolab.import_batches SET report=%s, status=%s,
+        with (psycopg.connect(url, connect_timeout=5) if connection is None else nullcontext(connection)) as active:
+            active.execute('''UPDATE photolab.import_batches SET report=%s, status=%s,
                 finished_at=CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id=%s''',
                 (Jsonb(report), status, finished, batch_id))
+            if connection is not None:
+                active.commit()
     except psycopg.Error:
+        if connection is not None:
+            connection.rollback()
         raise DatabaseError(f'Cannot persist report for batch #{batch_id}. Import stopped; some files may already be saved.') from None
 
 
-def import_batch(url, files, source_root, description, version, progress=None):
+def import_batch(url, files, source_root, description, version, progress=None, reuse_connection=False):
     """Process a prepared batch; each file commits separately, no automatic retry."""
     if not files or len(files) > MAX_FILES:
         raise ValueError('Invalid batch size.')
     batch_id = create_batch(url, description, version, len(files))
+    if reuse_connection:
+        try:
+            with psycopg.connect(url, connect_timeout=5) as connection:
+                return _import_batch_files(url, files, source_root, version, progress, batch_id, connection)
+        except psycopg.Error as error:
+            raise DatabaseError(f'Cannot open import connection for batch #{batch_id}.') from error
+    return _import_batch_files(url, files, source_root, version, progress, batch_id, None)
+
+
+def _import_batch_files(url, files, source_root, version, progress, batch_id, connection):
     report = []
     for index, entry in enumerate(files):
         row = dict(filename=entry.name, outcome='skipped', quality='', duplicate=False,
@@ -138,16 +153,21 @@ def import_batch(url, files, source_root, description, version, progress=None):
                 except PhotometryError as error:
                     item = None
                     quality = rejected_file_report(entry.name, str(error))
+                connection_args = {'connection': connection} if connection is not None else {}
                 stored = register_file_import(url, original_filename=entry.name, content=entry.content,
                     format_name=item.format if item else None, quality_report=quality,
-                    application_version=version, photometry=item, source_root=source_root, batch_id=batch_id)
+                    application_version=version, photometry=item, source_root=source_root, batch_id=batch_id,
+                    **connection_args)
                 row.update(outcome='rejected' if item is None else ('duplicate' if stored.duplicate else 'new'),
                            quality=quality.status, duplicate=stored.duplicate, file_id=stored.file_id,
                            message=' | '.join(quality.issues))
             except (DatabaseError, ValueError, OSError):
                 row.update(outcome='error', message='File import failed. Check database and source archive access.')
         report.append(row)
-        update_batch(url, batch_id, report, finished=index == len(files) - 1)
+        if connection is None:
+            update_batch(url, batch_id, report, finished=index == len(files) - 1)
+        else:
+            update_batch(url, batch_id, report, finished=index == len(files) - 1, connection=connection)
         if progress:
             progress(index + 1, len(files))
     return batch_id, report

@@ -12,6 +12,8 @@ tworzy nową partię i aliasy, ale oryginały są deduplikowane po SHA-256.
 `photolab.import_worker` przeszukuje podkatalogi, importuje jeden ZIP naraz
 i zapisuje punkt wznowienia w lokalnym SQLite. Po ukończeniu ZIP-a ponowne
 uruchomienie pomija go, jeżeli rozmiar i czas modyfikacji nie uległy zmianie.
+Bieżący worker używa jednego połączenia PostgreSQL podczas przetwarzania partii;
+każdy plik i każda aktualizacja raportu nadal są zatwierdzane osobno.
 Błędne ZIP-y są ponawiane; częściowo zapisane partie mogą pozostać w bazie.
 Przerwanie po zapisaniu partii, lecz przed punktem wznowienia, również może
 utworzyć ponowną partię i aliasy; fotometria jest deduplikowana po SHA-256.

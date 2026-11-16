@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import nullcontext
 import os
 from pathlib import Path
 from typing import Iterable, Mapping
@@ -160,6 +161,7 @@ def register_file_import(
     photometry: Photometry | None = None,
     source_root: Path | None = None,
     batch_id: int | None = None,
+    connection=None,
 ) -> StoredImport:
     """Register one imported file and its alias in a single database transaction.
 
@@ -187,8 +189,8 @@ def register_file_import(
         "issues": list(quality_report.issues),
     }
     try:
-        with psycopg.connect(url) as connection:
-            with connection.cursor() as cursor:
+        with (psycopg.connect(url) if connection is None else nullcontext(connection)) as active_connection:
+            with active_connection.cursor() as cursor:
                 if batch_id is None:
                     cursor.execute(
                         """INSERT INTO photolab.import_batches (source_description, application_version)
@@ -266,8 +268,10 @@ def register_file_import(
                     )
                 if feature is not None:
                     store_feature(cursor, file_id, feature)
-            connection.commit()
+            active_connection.commit()
     except psycopg.Error as error:
+        if connection is not None:
+            connection.rollback()
         raise DatabaseError("PostgreSQL file registration failed.") from error
 
     return StoredImport(

@@ -6,6 +6,10 @@ Aktualizacja dokumentacji (2026-10-10): w [README](../README.md) doprecyzowano n
 
 ## P0 — jakość danych i poprawność obliczeń [NASTĘPNE]
 
+- [x] Ograniczenie liczby połączeń PostgreSQL podczas importu partii przez
+  ponowne użycie połączenia; zachowano osobne zatwierdzanie plików i raportów.
+  Wymagany dalszy pomiar przepustowości całego importu na różnych producentach.
+
 - [x] Ponowny import zaakceptowanego przez nowszy parser źródła uzupełnia brakującą
   fotometrię i aktualny raport jakości bez zmiany historycznego raportu partii.
   Pozostaje walidacja na większej próbie i obsługa wersji istniejących wyników.

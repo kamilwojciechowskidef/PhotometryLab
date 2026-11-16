@@ -22,7 +22,7 @@ def test_worker_resumes_and_retries_failed_archives(tmp_path, monkeypatch):
     (source / 'b.zip').write_bytes(b'broken')
     calls = []
     monkeypatch.setattr(import_worker, 'import_batch',
-                        lambda url, files, root, description, version: (calls.append(description) or 42, [{'outcome': 'new'}]))
+                        lambda url, files, root, description, version, **kwargs: (calls.append(description) or 42, [{'outcome': 'new'}]))
     monkeypatch.setattr(import_worker, 'save_assets', lambda *args: None)
     args = (source.parent, 'database', tmp_path / 'artifacts', 'source', tmp_path / 'state.sqlite3')
     assert import_worker.run(*args) == (1, 1)
@@ -41,7 +41,7 @@ def test_worker_does_not_mark_failed_batch_complete(tmp_path, monkeypatch):
     (source / 'a.zip').write_bytes(zip_bytes())
     calls = []
     monkeypatch.setattr(import_worker, 'import_batch',
-                        lambda *args: (calls.append(1) or 1, [{'outcome': 'error'}]))
+                        lambda *args, **kwargs: (calls.append(1) or 1, [{'outcome': 'error'}]))
     args = (source, 'db', tmp_path / 'artifacts', 'source', tmp_path / 'state.sqlite3')
     assert import_worker.run(*args) == (0, 1)
     assert import_worker.run(*args) == (0, 1)

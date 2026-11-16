@@ -109,7 +109,8 @@ def run(directory, url, root, description, checkpoint, limit=None, min_free_byte
                 with path.open('rb') as stream:
                     content = stream.read(MAX_TOTAL_BYTES + 1)
                 files = prepare_zip(content)
-                batch_id, report = import_batch(url, files, root, f'{description} / {relative}', 'zip-worker-v1')
+                batch_id, report = import_batch(url, files, root, f'{description} / {relative}', 'zip-worker-v1',
+                                                reuse_connection=True)
                 if any(row['outcome'] == 'error' for row in report):
                     raise RuntimeError('One or more photometry files could not be saved; see batch report.')
                 save_assets(url, root, batch_id, content, report)
