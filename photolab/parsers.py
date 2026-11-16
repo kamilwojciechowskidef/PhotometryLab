@@ -131,7 +131,7 @@ def _ies(filename: str, text: str) -> Photometry:
         c_angles=c, gamma_angles=gamma, intensity=intensity, symmetry=symmetry,
         unit="cd", to_cd=1.0, power_w=watts if watts > 0 else None,
         source_flux_lm=flux,
-        warnings=warnings,
+        warnings=["The flux in an IES header may describe the lamp flux rather than the luminaire flux; it is not a confirmed luminaire flux."] if flux else [],
     )
 
 
@@ -244,4 +244,5 @@ def _ldt(filename: str, text: str) -> Photometry:
         c_angles=selected_c, gamma_angles=gamma, intensity=matrix, symmetry=mode,
         unit="cd/klm", to_cd=scale, power_w=power if power > 0 else None,
         source_flux_lm=flux if flux > 0 else None, warnings=warnings,
+        catalogue_number=lines[9].strip() or None,
     )

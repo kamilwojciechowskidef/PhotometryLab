@@ -1,3 +1,5 @@
+-- Relationships are scoped to a single imported archive (batch), not global
+-- product identity. Retain each original filename and content hash.
 CREATE TABLE photolab.zip_product_bundles (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     import_batch_id bigint NOT NULL REFERENCES photolab.import_batches(id),
@@ -17,3 +19,5 @@ CREATE TABLE photolab.zip_bundle_assets (
     photometry_file_id bigint REFERENCES photolab.photometry_files(id),
     PRIMARY KEY (bundle_id, original_filename)
 );
+
+CREATE INDEX zip_bundle_assets_photometry_idx ON photolab.zip_bundle_assets (photometry_file_id);
