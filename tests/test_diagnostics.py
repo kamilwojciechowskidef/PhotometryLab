@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from photolab.diagnostics import diagnose, distance_rows, half_maximum_width
-from photolab.diagnostics_ui import polar_figure, beam_figure
+from photolab.diagnostics_ui import polar_figure, beam_figure, beam_schematic_figure
 from photolab.models import Photometry
 
 
@@ -22,6 +22,31 @@ def test_known_symmetric_beam_width_and_inverse_square_lux():
     assert [row['Axial illuminance [lx]'] for row in rows] == [250, 62.5]
     assert rows[0]['C0-C180 width [m]'] == pytest.approx(4 * np.tan(np.deg2rad(20)))
     assert rows[1]['C0-C180 width [m]'] == pytest.approx(2 * rows[0]['C0-C180 width [m]'])
+
+
+def test_schematic_uses_calculated_diameter_and_lux():
+    rows = distance_rows(diagnose(radial()), [2, 4])
+    figure = beam_schematic_figure(rows, 0, radial=True)
+    assert figure.layout.shapes[0].type == 'circle'
+    assert figure.layout.shapes[0].y1 - figure.layout.shapes[0].y0 == pytest.approx(4 * np.tan(np.deg2rad(20)))
+    assert figure.data[-1].customdata[0][0] == 250
+    assert '250.00 lx' in figure.layout.annotations[-2].text
+
+
+def test_schematic_keeps_asymmetric_boundaries_and_missing_values():
+    result = diagnose(radial(unit='cd/klm', to_cd=None), 'source')
+    rows = distance_rows(result, [2])
+    rows[0]['C0-C180 left [m]'] = -2.0
+    rows[0]['C0-C180 right [m]'] = 1.0
+    rows[0]['C0-C180 width [m]'] = 3.0
+    figure = beam_schematic_figure(rows, 0, radial=False)
+    assert figure.layout.shapes[0].type == 'line'
+    assert (figure.layout.shapes[0].y0, figure.layout.shapes[0].y1) == (-2, 1)
+    assert figure.data[-1].customdata[0][0] is None
+    assert 'unavailable' in figure.layout.annotations[-1].text
+    axis_only = beam_schematic_figure(distance_rows(diagnose(radial((0, 90), (100, 100))), [2]), None)
+    assert not axis_only.layout.shapes
+    assert axis_only.data[-1].customdata[0][0] == 25
 
 
 def test_crossings_interpolated_on_nonuniform_native_grid():
@@ -168,7 +193,7 @@ from photolab.diagnostics_ui import render_diagnostics
 render_diagnostics(st, [load_photometry('synthetic.ies', make_ies('Test', 'narrow'))])
 ''').run(timeout=20)
     assert not app.exception
-    assert len(app.get('plotly_chart')) == 2
+    assert len(app.get('plotly_chart')) == 3
     assert len(app.get('download_button')) == 3
     assert app.dataframe[0].value['FWHM [°]'].notna().all()
     app.selectbox[1].select('Normalized to native maximum').run(timeout=20)

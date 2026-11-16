@@ -131,7 +131,8 @@ def _ies(filename: str, text: str) -> Photometry:
         c_angles=c, gamma_angles=gamma, intensity=intensity, symmetry=symmetry,
         unit="cd", to_cd=1.0, power_w=watts if watts > 0 else None,
         source_flux_lm=flux,
-        warnings=["The flux in an IES header may describe the lamp flux rather than the luminaire flux; it is not a confirmed luminaire flux."] if flux else [],
+        warnings=warnings,
+        catalogue_number=attributes.get("LUMCAT", "").strip() or None,
     )
 
 

@@ -1,5 +1,7 @@
 """Sequential ZIP directory import without uploading the directory to Streamlit."""
 import argparse
+from collections import Counter
+from hashlib import sha256
 from pathlib import Path
 import sqlite3
 import stat
@@ -32,16 +34,58 @@ def import_directory(directory, url, root, description, version='zip-cli-v1', *,
     directory = Path(directory)
     if not directory.is_dir() or not description.strip():
         raise ValueError('Provide an existing directory and source description.')
-    for path in directory.glob('*.zip'):
-        if path.is_symlink() or path.stat().st_size > MAX_TOTAL_BYTES:
-            raise ValueError(f'Archive exceeds size limit or is a symlink: {path.name}')
-        with path.open('rb') as stream:
-            content = stream.read(MAX_TOTAL_BYTES + 1)
-        files = prepare_zip(content)
-        del content
-        batch_id, rows = import_batch(url, files, root, f'{description} / {path.name}', version)
-        print(f'{path.name}: batch={batch_id} files={len(rows)}', flush=True)
-        del files, rows
+    if checkpoint is not None and not target_key:
+        raise ValueError('A database target key is required when using checkpoints.')
+    paths = sorted((p for p in (directory.rglob('*') if recursive else directory.iterdir())
+                    if p.suffix.lower() == '.zip'), key=lambda p: str(p).casefold())
+    if not paths:
+        raise ValueError('No ZIP archives found. Use --recursive to include subdirectories.')
+    counts = Counter()
+    for number, path in enumerate(paths, 1):
+        path_key = None
+        relative_name = path.relative_to(directory).as_posix()
+        digest = None
+        claimed = False
+        try:
+            metadata = path.lstat()
+            if (stat.S_ISLNK(metadata.st_mode) or getattr(metadata, 'st_file_attributes', 0) & 0x400
+                    or not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_TOTAL_BYTES):
+                raise ValueError('Archive is not a regular file or exceeds the per-ZIP limit.')
+            path_key = str(path.resolve(strict=True))
+            with path.open('rb') as stream:
+                content = stream.read(MAX_TOTAL_BYTES + 1)
+            if len(content) > MAX_TOTAL_BYTES:
+                raise ValueError('Archive exceeds the per-ZIP limit.')
+            digest = sha256(content).hexdigest()
+            if checkpoint is not None:
+                claimed, status = checkpoint.claim(target_key, path_key, digest,
+                                                   retry_uncertain=retry_uncertain)
+                if not claimed:
+                    counts[f'skipped_{status}'] += 1
+                    batch, message = checkpoint.details(target_key, path_key, digest)
+                    print(f'[{number}/{len(paths)}] {relative_name}: skipped checkpoint={status} '
+                          f'batch={batch if batch is not None else "unknown"} {message}', flush=True)
+                    continue
+            def progress(done, total):
+                if done % 10 == 0 or done == total:
+                    print(f'[{number}/{len(paths)}] {relative_name}: files {done}/{total}', flush=True)
+            batch_id, rows, groups, skipped = import_product_zip(
+                url, content, root, f'{description} / {relative_name}', version, progress=progress)
+            outcomes = Counter(row.get('outcome', '') for row in rows)
+            failures = sum(outcomes[key] for key in ('error', 'skipped', 'rejected'))
+            status = 'completed_with_errors' if failures else 'completed'
+            if checkpoint is not None:
+                checkpoint.finish(target_key, path_key, digest, status=status, batch_id=batch_id,
+                                  message=f'new={outcomes["new"]} duplicate={outcomes["duplicate"]} errors={failures}')
+            counts[status] += 1
+            print(f'[{number}/{len(paths)}] {relative_name}: batch={batch_id} bundles={len(groups)} '
+                  f'new={outcomes["new"]} duplicate={outcomes["duplicate"]} errors={failures}', flush=True)
+        except (ValueError, OSError, sqlite3.Error, psycopg.Error, DatabaseError) as error:
+            counts['needs_review'] += 1
+            if checkpoint is not None and digest is not None and claimed:
+                checkpoint.finish(target_key, path_key, digest, status='needs_review', message=str(error))
+            print(f'[{number}/{len(paths)}] {relative_name}: NEEDS REVIEW: {error}', flush=True)
+    return counts
 
 
 def main():

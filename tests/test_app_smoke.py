@@ -9,6 +9,13 @@ from contextlib import nullcontext
 from types import ModuleType, SimpleNamespace
 
 
+@pytest.fixture(autouse=True)
+def catalogue_statistics_without_database(monkeypatch):
+    import photolab.catalogue_controls as controls
+    monkeypatch.setattr(controls, 'get_count', lambda *args, **kwargs: 100)
+    monkeypatch.setattr(controls, 'get_brands', lambda *args, **kwargs: ('Example',))
+
+
 @pytest.mark.parametrize('unavailable', [False, True])
 def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
     from photolab.demo import make_ies
@@ -25,7 +32,7 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
     stub.sidebar = nullcontext()
     stub.file_uploader = lambda *a, **k: []
     stub.checkbox = lambda *a, **k: k.get('key') == 'browse_catalogue'
-    stub.button = lambda *a, **k: False
+    stub.button = lambda label, **k: label == 'Add selected to comparison'
     stub.text_input = lambda *a, **k: ''
     stub.number_input = lambda *a, **k: 1
     stub.multiselect = lambda label, options, **k: options
@@ -42,14 +49,16 @@ def test_catalogue_comparison_with_same_filenames(monkeypatch, unavailable):
         return [dict(file_id=i, filename='same.ies', manufacturer='Example', model='Lamp',
                      format='IES', sha256=str(i) * 64) for i in (1, 2)]
     monkeypatch.setattr(database, 'list_catalogue', listing)
-    monkeypatch.setattr(database, 'load_stored_photometry',
-                        lambda *a: load_photometry('same.ies', make_ies('Test', 'oval')))
+    monkeypatch.setattr(database, 'load_stored_photometries',
+                        lambda url, ids: {i: load_photometry('same.ies', make_ies('Test', 'oval')) for i in ids})
     runpy.run_path('app.py', run_name='__main__')
     if unavailable:
         assert errors == ['Catalogue unavailable']
     else:
         ranking = next(table for table in tables if 'Candidate' in table.columns)
         assert ranking['Candidate'].tolist() == ['[DB 2] same.ies']
+        assert ranking['Brand'].tolist() == ['SYNTHETIC SAMPLES / NOT A MANUFACTURER']
+        assert ranking['Catalogue number'].tolist() == ['Test']
         assert not errors
 
 
@@ -77,7 +86,7 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     stub.dataframe = check_arrow
     stub.file_uploader = lambda *a, **k: ([SimpleNamespace(name='damaged.ies', getvalue=lambda: b'bad')]
                                         if include_rejected else [])
-    stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk') else True
+    stub.checkbox = lambda *a, **k: False if k.get('key') in ('browse_catalogue', 'browse_sources', 'open_bulk', 'catalogue_assets', 'show_import_progress') else True
     stub.button = lambda *a, **k: False
     stub.expander = lambda *a, **k: nullcontext()
     stub.tabs = lambda labels: [nullcontext() for _ in labels]
@@ -85,6 +94,9 @@ def test_app_demo_flow(monkeypatch, include_rejected):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.multiselect = lambda label, options, **k: []
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
+    stub.text_input = lambda *args, **kwargs: ''
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected empty demo'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
@@ -109,6 +121,9 @@ def test_app_exports_quality_report_for_rejected_file(monkeypatch):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.multiselect = lambda label, options, **k: []
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
+    stub.text_input = lambda *args, **kwargs: ''
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('The application must not stop the quality report'))
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     runpy.run_path('app.py', run_name='__main__')
@@ -138,6 +153,9 @@ def test_app_saves_uploaded_file_to_catalogue(monkeypatch):
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.multiselect = lambda label, options, **k: []
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
+    stub.text_input = lambda *args, **kwargs: ''
     stub.stop = lambda: (_ for _ in ()).throw(AssertionError('Unexpected stop'))
     registered = []
     monkeypatch.setattr(database, 'database_url', lambda: 'postgresql://test')
@@ -176,6 +194,9 @@ def test_app_searches_indexed_catalogue_with_one_uploaded_reference(monkeypatch)
     stub.metric = noop
     stub.selectbox = lambda label, options, **k: list(options)[0]
     stub.slider = lambda *args, **kwargs: kwargs['value']
+    stub.multiselect = lambda label, options, **k: []
+    stub.number_input = lambda *args, **kwargs: kwargs.get('value', 1)
+    stub.text_input = lambda *args, **kwargs: ''
     monkeypatch.setitem(sys.modules, 'streamlit', stub)
     monkeypatch.setattr(indexing, 'rank_catalogue',
                         lambda *args, **kwargs: calls.append(('search', args[1].filename)) or
@@ -185,3 +206,99 @@ def test_app_searches_indexed_catalogue_with_one_uploaded_reference(monkeypatch)
 
     assert ('search', 'reference.ies') in calls
     assert any('No indexed candidates' in message for kind, message in calls if kind == 'info')
+
+
+def test_saved_selection_persists_between_pages_and_becomes_reference(monkeypatch):
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    from photolab.demo import make_ies
+    from photolab.parsers import load_photometry
+    import photolab.database as database
+
+    monkeypatch.setattr(database, 'database_url', lambda: 'unused')
+    def listing(url, *, offset=0, **kwargs):
+        number = 10 if offset == 0 else 20
+        return [dict(file_id=number, filename=f'{number}.ies', manufacturer='Example',
+                     model=f'Model {number}', catalogue_number=f'CAT-{number}',
+                     format='IES', sha256=f'{number:064x}')]
+    monkeypatch.setattr(database, 'list_catalogue', listing)
+    monkeypatch.setattr(database, 'load_stored_photometries',
+                        lambda url, ids: {i: load_photometry(f'{i}.ies', make_ies(f'CAT-{i}', 'narrow'))
+                                          for i in ids})
+
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / 'app.py').run(timeout=30)
+    app.checkbox(key='browse_catalogue').check().run(timeout=30)
+    app.multiselect(key='sidebar_select_page').select(app.multiselect(key='sidebar_select_page').options[0]).run(timeout=30)
+    app.button(key='add_catalogue_selection').click().run(timeout=30)
+    assert app.selectbox(key='ref_file').value.startswith('[DB 10]')
+    assert list(app.session_state['selected_catalogue_files']) == [10]
+    app.selectbox(key='sidebar_page_None__1').select(2).run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10]
+    app.multiselect(key='sidebar_select_page').select(app.multiselect(key='sidebar_select_page').options[0]).run(timeout=30)
+    app.button(key='add_catalogue_selection').click().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10, 20]
+    assert app.selectbox(key='ref_file').value.startswith('[DB 20]')
+    app.checkbox(key='browse_catalogue').uncheck().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10, 20]
+    assert not app.exception
+
+
+def test_main_catalogue_manufacturer_and_number_filters(monkeypatch):
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    import photolab.database as database
+
+    calls = []
+    monkeypatch.setattr(database, 'database_url', lambda: 'unused')
+    def listing(url, **kwargs):
+        calls.append(kwargs)
+        return [dict(file_id=10, filename='10.ies', manufacturer='Example',
+                     model='Description', catalogue_number='CAT-10',
+                     format='IES', sha256='a' * 64)]
+    monkeypatch.setattr(database, 'list_catalogue', listing)
+
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / 'app.py').run(timeout=30)
+    assert 'Example' in app.selectbox(key='main_catalogue_brand').options
+    app.selectbox(key='main_catalogue_brand').select('Example').run(timeout=30)
+    app.text_input(key='main_catalogue_model').set_value('CAT-10').run(timeout=30)
+    assert calls[-1]['manufacturer'] == 'Example'
+    assert calls[-1]['manufacturer_exact'] is True
+    assert calls[-1]['model'] == 'CAT-10'
+    assert not app.exception
+
+
+def test_main_catalogue_adds_across_pages_and_removes_individual_file(monkeypatch):
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    from photolab.demo import make_ies
+    from photolab.parsers import load_photometry
+    import photolab.database as database
+
+    monkeypatch.setattr(database, 'database_url', lambda: 'unused')
+    def listing(url, *, offset=0, **kwargs):
+        number = 10 if offset == 0 else 20
+        return [dict(file_id=number, filename=f'{number}.ies', manufacturer='Example',
+                     model=f'Model {number}', catalogue_number=f'CAT-{number}',
+                     format='IES', sha256=f'{number:064x}')]
+    monkeypatch.setattr(database, 'list_catalogue', listing)
+    monkeypatch.setattr(database, 'load_stored_photometries',
+                        lambda url, ids: {i: load_photometry(f'{i}.ies', make_ies(f'CAT-{i}', 'narrow'))
+                                          for i in ids})
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / 'app.py').run(timeout=30)
+    choice = app.multiselect(key='main_choose_None__1')
+    choice.select(choice.options[0]).run(timeout=30)
+    app.button(key='main_add_catalogue').click().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10]
+    assert app.selectbox(key='ref_file').value.startswith('[DB 10]')
+    app.selectbox(key='main_page_None__1').select(2).run(timeout=30)
+    choice = app.multiselect(key='main_choose_None__2')
+    choice.select(choice.options[0]).run(timeout=30)
+    app.button(key='main_add_catalogue').click().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [10, 20]
+    assert app.selectbox(key='ref_file').value.startswith('[DB 20]')
+    removal = app.multiselect(key='main_remove_selection')
+    removal.select(removal.options[0]).run(timeout=30)
+    app.button(key='main_remove_catalogue').click().run(timeout=30)
+    assert list(app.session_state['selected_catalogue_files']) == [20]
+    assert app.selectbox(key='ref_file').value.startswith('[DB 20]')
+    assert not app.exception
