@@ -7,7 +7,10 @@ from .diagnostics import DIAGNOSTICS_VERSION, diagnose, distance_rows
 from .analysis import C_GRID, GAMMA_GRID, shape_matrix
 from .product_labels import product_label
 
-COLORS = ('#0284c7', '#ea580c')
+COLORS = ('#38bdf8', '#fb923c')
+BACKGROUND = '#0e1117'
+TEXT = '#f8fafc'
+GRID = '#475569'
 
 
 def distribution_figures(item):
@@ -30,14 +33,16 @@ def distribution_figures(item):
 
 
 def _readable_layout(figure):
-    """Keep chart text legible in either application theme."""
+    """Use a dark background and light labels for diagnostic charts."""
     figure.update_layout(
-        template='plotly_white', paper_bgcolor='#ffffff', plot_bgcolor='#ffffff',
-        font=dict(color='#172b4d', size=13),
+        template='plotly_dark', paper_bgcolor=BACKGROUND, plot_bgcolor=BACKGROUND,
+        font=dict(color=TEXT, size=13),
         legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.15,
-                    yanchor='top', font=dict(size=13, color='#172b4d')),
+                    yanchor='top', font=dict(size=13, color=TEXT)),
         margin=dict(t=65, b=95, l=65, r=45),
     )
+    figure.update_xaxes(gridcolor=GRID, zerolinecolor=GRID)
+    figure.update_yaxes(gridcolor=GRID, zerolinecolor=GRID)
 
 
 def _display_table(rows, numeric_columns):
@@ -64,13 +69,13 @@ def polar_figure(result):
             ))
     figure.update_layout(
         title=f'Polar luminous intensity · {result.unit}', height=540,
-        polar=dict(bgcolor='#ffffff',
+        polar=dict(bgcolor=BACKGROUND,
                    radialaxis=dict(rangemode='tozero', angle=90, nticks=6,
-                                   tickformat='.3~g', color='#334155',
-                                   gridcolor='#cbd5e1', tickfont=dict(size=12, color='#334155')),
+                                   tickformat='.3~g', color=TEXT,
+                                   gridcolor=GRID, tickfont=dict(size=12, color=TEXT)),
                    angularaxis=dict(rotation=270, direction='counterclockwise',
-                                    color='#334155', gridcolor='#cbd5e1',
-                                    tickfont=dict(size=12, color='#334155'),
+                                    color=TEXT, gridcolor=GRID,
+                                    tickfont=dict(size=12, color=TEXT),
                                     tickmode='array', tickvals=list(range(0, 360, 30)),
                                     ticktext=[f'{min(a, 360-a)}°' for a in range(0, 360, 30)])),
         legend=dict(orientation='h'), margin=dict(t=60, b=40, l=55, r=55),
@@ -124,7 +129,7 @@ def beam_schematic_figure(rows, plane, radial=False):
         figure.add_trace(go.Scatter(
             x=[0] + distances + distances[::-1] + [0],
             y=[0] + right + left[::-1] + [0], mode='lines',
-            line=dict(color='#0284c7', width=2), fill='toself',
+            line=dict(color=COLORS[0], width=2), fill='toself',
             fillcolor='rgba(125, 190, 220, 0.30)', name=label,
             hoverinfo='skip'))
         centered = radial and all(np.isclose(a, -b, rtol=1e-6, atol=1e-9)
@@ -133,18 +138,18 @@ def beam_schematic_figure(rows, plane, radial=False):
             if centered:
                 radius = distances[0] * 0.13
                 figure.add_shape(type='circle', x0=distance-radius, x1=distance+radius,
-                                 y0=lo, y1=hi, line=dict(color='#0284c7', width=1),
-                                 fillcolor='rgba(255,255,255,0.3)')
+                                 y0=lo, y1=hi, line=dict(color=COLORS[0], width=1),
+                                 fillcolor='rgba(255,255,255,0.1)')
             else:
                 figure.add_shape(type='line', x0=distance, x1=distance, y0=lo, y1=hi,
-                                 line=dict(color='#0284c7', width=2))
+                                 line=dict(color=COLORS[0], width=2))
             description = 'Diameter' if centered else 'Section width'
             figure.add_annotation(x=distance, y=hi + extent * .12, showarrow=False,
                                   text=f"{description}<br>{row[f'{label} width [m]']:.2f} m",
-                                  font=dict(size=11, color='#172b4d'))
+                                  font=dict(size=11, color=TEXT))
     figure.add_trace(go.Scatter(
         x=distances, y=[0] * len(rows), mode='lines+markers', name='Optical axis',
-        line=dict(color='#475569', dash='dot'), marker=dict(size=6),
+        line=dict(color='#cbd5e1', dash='dot'), marker=dict(size=6),
         customdata=[[row['Axial illuminance [lx]']] for row in rows],
         hovertemplate='Distance: %{x:.2f} m<extra>Optical axis</extra>'))
     for row in rows:
@@ -152,7 +157,7 @@ def beam_schematic_figure(rows, plane, radial=False):
         value = 'unavailable' if lux is None else f'{lux:.2f} lx'
         figure.add_annotation(x=row['Distance [m]'], y=-extent * 1.25,
                               text=f'On axis<br>{value}', showarrow=False,
-                              font=dict(size=11, color='#172b4d'))
+                              font=dict(size=11, color=TEXT))
     _readable_layout(figure)
     figure.update_layout(title='Beam at selected distances', height=440, showlegend=False,
                          xaxis=dict(title='Axial distance [m]', tickvals=distances,
