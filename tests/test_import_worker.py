@@ -1,5 +1,7 @@
 from io import BytesIO
 from zipfile import ZipFile
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Lock
 
 import pytest
 
@@ -57,6 +59,45 @@ def test_worker_stops_before_import_when_disk_is_low(tmp_path, monkeypatch):
     with pytest.raises(import_worker.LowDiskSpaceError, match='insufficient free space'):
         import_worker.run(source, 'db', tmp_path / 'artifacts', 'source', tmp_path / 'state.sqlite3',
                           min_free_bytes=2)
+
+
+def test_coordinated_workers_do_not_import_same_archive(tmp_path, monkeypatch):
+    source = tmp_path / 'source'
+    source.mkdir()
+    for name in ('a.zip', 'b.zip'):
+        (source / name).write_bytes(zip_bytes())
+    mutex, active, seen, barrier = Lock(), set(), [], Barrier(2)
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def execute(self, sql, params):
+            with mutex:
+                key = params[0]
+                if 'try_advisory' in sql:
+                    self.result = key not in active
+                    if self.result:
+                        active.add(key)
+                else:
+                    active.discard(key)
+                    self.result = True
+            return self
+        def fetchone(self): return (self.result,)
+    monkeypatch.setattr(import_worker.psycopg, 'connect', lambda *args, **kwargs: Connection())
+    def store(url, files, root, description, version, **kwargs):
+        with mutex:
+            seen.append(description)
+        barrier.wait(timeout=10)
+        return 1, [{'outcome': 'new'}]
+    monkeypatch.setattr(import_worker, 'import_batch', store)
+    monkeypatch.setattr(import_worker, 'save_assets', lambda *args: None)
+    args = (source, 'db', tmp_path / 'artifacts', 'source', tmp_path / 'state.sqlite3')
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(import_worker.run, *args, coordinated=True, reverse=reverse)
+                   for reverse in (False, True)]
+        results = [future.result(timeout=20) for future in futures]
+    assert sorted(seen) == ['source / a.zip', 'source / b.zip']
+    assert sum(done for done, _ in results) == 2
+    assert sum(errors for _, errors in results) == 0
 
 
 def test_companion_files_are_persisted_with_names_and_hashes(tmp_path, monkeypatch):

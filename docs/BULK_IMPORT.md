@@ -1,5 +1,17 @@
 # Import wsadowy
 
+## Równoległe procesy `photolab.import_worker`
+
+Wszystkie procesy importujące równolegle z jednego katalogu muszą używać
+`--coordinated` oraz tej samej ścieżki źródła, bazy, magazynu i checkpointu.
+PostgreSQL blokuje archiwum na czas importu, a po uzyskaniu blokady worker
+ponownie sprawdza checkpoint. `--reverse` odwraca kolejność przetwarzania.
+Nie uruchamiaj jednocześnie workera bez `--coordinated`: nie respektuje blokad.
+Po przerwaniu może pozostać częściowa partia; ponowienie może utworzyć nową
+partię i aliasy, a oryginały są deduplikowane po SHA-256. Proces kończy pracę
+po przejściu dostępnych archiwów; inne archiwa mogą nadal być przetwarzane
+przez drugi proces. Blokada znika po zamknięciu sesji PostgreSQL.
+
 ## Podgląd postępu workera w Streamlit
 
 W zakładce **Saved catalogue** zaznacz **Show folder import progress** i użyj

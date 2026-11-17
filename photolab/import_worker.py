@@ -1,5 +1,6 @@
 """Resume a bounded ZIP import from a local producer directory."""
 import argparse
+from contextlib import ExitStack
 import hashlib
 from io import BytesIO
 import json
@@ -72,7 +73,8 @@ def save_assets(url, root, batch_id, content, report):
                 (bundle_id, info.filename, kind, digest, len(asset), key, records.get(info.filename)))
 
 
-def run(directory, url, root, description, checkpoint, limit=None, min_free_bytes=0):
+def run(directory, url, root, description, checkpoint, limit=None, min_free_bytes=0,
+        coordinated=False, reverse=False):
     directory, root, checkpoint = Path(directory).resolve(), Path(root).resolve(), Path(checkpoint)
     if not directory.is_dir() or not description.strip() or (limit is not None and limit < 1):
         raise ValueError('Provide a directory, source description and positive limit.')
@@ -80,7 +82,9 @@ def run(directory, url, root, description, checkpoint, limit=None, min_free_byte
     identity = hashlib.sha256((str(directory) + '\0' + url + '\0' + str(root)).encode()).hexdigest()
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
     done = errors = attempted = 0
-    with sqlite3.connect(checkpoint) as state:
+    with ExitStack() as resources:
+        state = resources.enter_context(sqlite3.connect(checkpoint, timeout=60))
+        lock_connection = resources.enter_context(psycopg.connect(url, connect_timeout=5, autocommit=True)) if coordinated else None
         state.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
         state.execute('''CREATE TABLE IF NOT EXISTS archives
             (path TEXT PRIMARY KEY, size INTEGER NOT NULL, mtime INTEGER NOT NULL,
@@ -90,8 +94,12 @@ def run(directory, url, root, description, checkpoint, limit=None, min_free_byte
             raise ValueError('Checkpoint belongs to a different source, database or archive directory.')
         state.execute("INSERT OR IGNORE INTO settings VALUES ('identity', ?)", (identity,))
         state.commit()
-        for path in archives(directory):
+        paths = archives(directory)
+        if reverse:
+            paths = reversed(list(paths))
+        for path in paths:
             relative = path.relative_to(directory).as_posix()
+            lock_key = None
             try:
                 if path.is_symlink():
                     raise ValueError('ZIP is a symbolic link.')
@@ -99,6 +107,16 @@ def run(directory, url, root, description, checkpoint, limit=None, min_free_byte
                 previous = state.execute('SELECT size, mtime, status FROM archives WHERE path=?', (relative,)).fetchone()
                 if previous == (info.st_size, info.st_mtime_ns, 'completed'):
                     continue
+                if lock_connection is not None:
+                    lock_key = int.from_bytes(hashlib.sha256((identity + '\0' + relative).encode()).digest()[:8],
+                                              byteorder='big', signed=True)
+                    if not lock_connection.execute('SELECT pg_try_advisory_lock(%s)', (lock_key,)).fetchone()[0]:
+                        lock_key = None
+                        continue
+                    # Another worker may have finished after our first checkpoint read.
+                    previous = state.execute('SELECT size, mtime, status FROM archives WHERE path=?', (relative,)).fetchone()
+                    if previous == (info.st_size, info.st_mtime_ns, 'completed'):
+                        continue
                 if limit is not None and attempted >= limit:
                     break
                 if min_free_bytes and shutil.disk_usage(checkpoint.parent).free < min_free_bytes:
@@ -129,7 +147,10 @@ def run(directory, url, root, description, checkpoint, limit=None, min_free_byte
                 state.execute('INSERT OR REPLACE INTO archives VALUES (?, ?, ?, ?, ?, ?)',
                               (relative, -1, -1, 'error', None, str(error)))
                 print(f'ERROR {relative}: {error}', flush=True)
-            state.commit()
+            finally:
+                state.commit()
+                if lock_key is not None:
+                    lock_connection.execute('SELECT pg_advisory_unlock(%s)', (lock_key,))
     return done, errors
 
 
@@ -139,6 +160,9 @@ def main():
     parser.add_argument('--source', required=True)
     parser.add_argument('--checkpoint', type=Path, default=Path('data/private/import-checkpoint.sqlite3'))
     parser.add_argument('--limit', type=int)
+    parser.add_argument('--coordinated', action='store_true',
+                        help='Coordinate archives with other workers using PostgreSQL advisory locks.')
+    parser.add_argument('--reverse', action='store_true', help='Process the directory in reverse order.')
     parser.add_argument('--min-free-gib', type=float, default=5.0,
                         help='Stop before the next archive when the checkpoint drive falls below this free space.')
     args = parser.parse_args()
@@ -150,7 +174,7 @@ def main():
                for table in ('zip_product_bundles', 'zip_bundle_assets')):
             raise SystemExit('Apply database migration 006 before running the worker.')
     done, errors = run(args.directory, url, artifact_root(), args.source, args.checkpoint, args.limit,
-                       int(args.min_free_gib * 1024**3))
+                       int(args.min_free_gib * 1024**3), coordinated=args.coordinated, reverse=args.reverse)
     print(f'Finished: completed={done} errors={errors}', flush=True)
     if errors:
         raise SystemExit(1)
