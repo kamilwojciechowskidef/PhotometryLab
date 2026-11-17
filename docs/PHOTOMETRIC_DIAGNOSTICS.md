@@ -1,10 +1,12 @@
 # Diagnostyka fotometryczna pojedynczej oprawy
 
 W sekcji diagnostyki dostępne są również wykres przekrojów C0 i C90 oraz mapa
-rozkładu na siatce porównawczej C=0–350° co 10° i γ=0–90° co 5°. Wartości są
-normalizowane przez maksimum na tej siatce i nie podlegają wyrównaniu obrotu;
-wybór skali natywnych danych diagnostycznych nie zmienia tych dwóch wykresów.
-Brak zakresu γ=0–90° albo brak emisji na siatce uniemożliwia ich wyświetlenie.
+wartości na oryginalnej siatce C i γ. Przekroje używają natywnych kątów γ;
+płaszczyzny C0 i C90 mogą wymagać interpolacji C lub rozwinięcia symetrii.
+Mapa przedstawia tylko oryginalnie zapisane płaszczyzny C, bez rozwijania
+symetrii. Oba wykresy pokazują jedną oprawę bez wyrównania obrotu i przyjmują
+wybraną skalę diagnostyczną: cd, jednostkę źródłową albo wartość znormalizowaną
+do maksimum w danych źródłowych. Nie dopisują brakujących kątów γ.
 
 ## Schemat wiązki w kolejnych odległościach
 

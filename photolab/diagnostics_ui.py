@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from .diagnostics import DIAGNOSTICS_VERSION, diagnose, distance_rows
-from .analysis import C_GRID, GAMMA_GRID, shape_matrix
 from .product_labels import product_label
 
 COLORS = ('#38bdf8', '#fb923c')
@@ -13,21 +12,20 @@ TEXT = '#f8fafc'
 GRID = '#475569'
 
 
-def distribution_figures(item):
-    """Draw the same lower-hemisphere normalized grid used for comparison."""
-    matrix = shape_matrix(item)
+def distribution_figures(item, result):
+    """Show one file's native gamma samples and native C-plane matrix."""
+    matrix = item.intensity * (result.peak / float(item.intensity.max()))
     sections = go.Figure()
-    for index, plane, color in ((0, 'C0', COLORS[0]), (9, 'C90', COLORS[1])):
-        sections.add_trace(go.Scatter(x=GAMMA_GRID, y=matrix[index], mode='lines+markers',
-                                      name=plane, line=dict(color=color, width=2)))
+    for section, color in zip(result.sections, COLORS):
+        sections.add_trace(go.Scatter(x=section.gamma, y=section.positive, mode='lines+markers',
+                                      name=f'C{section.plane}', line=dict(color=color, width=2)))
     _readable_layout(sections)
-    sections.update_layout(title='Normalized intensity sections', height=400,
-                           xaxis_title='Gamma angle γ [°]', yaxis_title='Intensity / grid maximum [-]')
-    heatmap = go.Figure(data=go.Heatmap(x=GAMMA_GRID, y=C_GRID, z=matrix,
-                                        colorbar=dict(title='I / Imax'), colorscale='Viridis',
-                                        zmin=0, zmax=1))
+    sections.update_layout(title='Single luminaire: C0 and C90 intensity', height=400,
+                           xaxis_title='Gamma angle γ [°]', yaxis_title=f'Intensity [{result.unit}]')
+    heatmap = go.Figure(data=go.Heatmap(x=item.gamma_angles, y=item.c_angles, z=matrix,
+                                        colorbar=dict(title=result.unit), colorscale='Viridis', zmin=0))
     _readable_layout(heatmap)
-    heatmap.update_layout(title='Normalized intensity distribution', height=390,
+    heatmap.update_layout(title='Single luminaire: native measurement grid', height=390,
                           xaxis_title='Gamma angle γ [°]', yaxis_title='C [°]')
     return sections, heatmap
 
@@ -202,17 +200,13 @@ def render_diagnostics(st, items, selected=None):
                'are C180/C270. Only the measured gamma range is drawn. '
                'Both cuts use the same scale; no rotation alignment is applied. '
                'The peak is a native sample, not a claim about unmeasured directions.')
-    try:
-        sections_figure, map_figure = distribution_figures(item)
-    except ValueError:
-        st.info('Normalized section plots and the distribution map require usable photometry '
-                'throughout γ = 0–90° with emission in that range.')
-    else:
-        st.plotly_chart(sections_figure, width='stretch', theme=None)
-        st.plotly_chart(map_figure, width='stretch', theme=None)
-        st.caption('Single luminaire; no rotation alignment. Intensities are interpolated onto '
-                   'C = 0–350° every 10° and γ = 0–90° every 5°, then divided by the maximum '
-                   'on that grid. This normalization is independent of the diagnostic intensity scale above.')
+    sections_figure, map_figure = distribution_figures(item, result)
+    st.plotly_chart(sections_figure, width='stretch', theme=None)
+    st.plotly_chart(map_figure, width='stretch', theme=None)
+    st.caption('One selected luminaire; no candidate or rotation alignment. The sections use '
+               'native gamma angles and symmetry or C interpolation when needed. The map shows '
+               'only the native C and gamma grid, without expanding symmetry. Both plots use '
+               'the diagnostic intensity scale selected above.')
     st.subheader('Lower-hemisphere beam width (FWHM)')
     widths = []
     for section in result.sections:

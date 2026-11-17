@@ -13,18 +13,25 @@ def radial(gamma=(0, 20, 40, 90), values=(1000, 500, 0, 0), unit='cd', to_cd=1):
                       np.array(gamma), np.array([values]), 'radial', unit, to_cd).validate()
 
 
-def test_single_luminaire_distribution_figures_use_comparison_grid():
-    sections, heatmap = distribution_figures(radial())
+def test_single_luminaire_distribution_figures_use_native_values():
+    item = radial()
+    sections, heatmap = distribution_figures(item, diagnose(item, 'source'))
     assert [trace.name for trace in sections.data] == ['C0', 'C90']
-    assert sections.data[0].y[4] == pytest.approx(0.5)  # gamma=20 degrees
+    np.testing.assert_array_equal(sections.data[0].x, [0, 20, 40, 90])
+    assert sections.data[0].y[1] == pytest.approx(500)
     np.testing.assert_allclose(sections.data[0].y, sections.data[1].y)
-    assert np.asarray(heatmap.data[0].z).shape == (36, 19)
-    assert heatmap.data[0].z[0][4] == pytest.approx(0.5)
+    assert np.asarray(heatmap.data[0].z).shape == (1, 4)
+    assert heatmap.data[0].z[0][1] == pytest.approx(500)
+    normalized, heatmap = distribution_figures(item, diagnose(item, 'normalized'))
+    assert normalized.data[0].y[1] == pytest.approx(0.5)
+    assert heatmap.data[0].z[0][1] == pytest.approx(0.5)
 
 
-def test_distribution_figures_reject_missing_gamma_coverage():
-    with pytest.raises(ValueError, match='cover'):
-        distribution_figures(radial((20, 90), (100, 0)))
+def test_distribution_figures_preserve_partial_gamma_coverage():
+    item = radial((20, 90), (100, 0))
+    sections, heatmap = distribution_figures(item, diagnose(item, 'source'))
+    np.testing.assert_array_equal(sections.data[0].x, [20, 90])
+    np.testing.assert_array_equal(heatmap.data[0].x, [20, 90])
 
 
 def test_known_symmetric_beam_width_and_inverse_square_lux():
